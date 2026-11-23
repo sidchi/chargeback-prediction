@@ -1,6 +1,9 @@
 """Command-line entry point (``cbp``).
 
-Subcommands are added as pipeline stages land (train, score, explain to follow).
+Subcommands are added as pipeline stages land (train, score, explain to follow):
+
+``cbp generate``  write a synthetic dataset as CSV tables
+``cbp features``  build the point-in-time feature table from those CSVs
 """
 
 from __future__ import annotations
@@ -11,8 +14,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from chargeback_prediction import __version__
+from chargeback_prediction.features import build_features, render_feature_table
 from chargeback_prediction.reason_codes import all_reason_codes
-from chargeback_prediction.synthetic import GeneratorConfig, generate, write_dataset
+from chargeback_prediction.synthetic import GeneratorConfig, generate, read_dataset, write_dataset
 
 
 def _utc_date(value: str) -> datetime:
@@ -43,6 +47,21 @@ def _build_parser() -> argparse.ArgumentParser:
         help="start of the observation window, YYYY-MM-DD (UTC)",
     )
     gen.add_argument("--days", type=int, default=defaults.days, help="length of the window")
+
+    feat = sub.add_parser(
+        "features", help="Build the point-in-time feature table from a generated dataset."
+    )
+    feat.add_argument(
+        "--data", type=Path, default=Path("data/synthetic"), help="directory of dataset CSVs"
+    )
+    feat.add_argument(
+        "--out", type=Path, default=Path("data/features.csv"), help="feature table CSV to write"
+    )
+    feat.add_argument(
+        "--doc",
+        action="store_true",
+        help="print the documented feature table (docs/features.md) instead of building",
+    )
     return parser
 
 
@@ -66,6 +85,28 @@ def _cmd_generate(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
     return 0
 
 
+def _cmd_features(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    if args.doc:
+        print(render_feature_table(), end="")
+        return 0
+    try:
+        dataset = read_dataset(args.data)
+    except FileNotFoundError as exc:
+        parser.error(f"{exc.filename} not found; run `cbp generate` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+    table = build_features(dataset)
+    table.write_csv(args.out)
+    mature = [row for row in table if row.label_mature]
+    disputed = sum(row.disputed for row in mature)
+    rate = disputed / len(mature) if mature else 0.0
+    print(f"rows            {len(table):>8}  ({len(table.columns)} features)")
+    print(f"mature labels   {len(mature):>8}  ({disputed} disputed, {rate:.2%})")
+    print(f"observed until  {table.observed_until.isoformat()}")
+    print(f"\nwrote {args.out}")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code."""
     parser = _build_parser()
@@ -74,6 +115,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_reason_codes()
     if args.command == "generate":
         return _cmd_generate(args, parser)
+    if args.command == "features":
+        return _cmd_features(args, parser)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
 
 

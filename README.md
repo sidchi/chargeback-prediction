@@ -81,6 +81,7 @@ Requires [uv](https://docs.astral.sh/uv/) (it will fetch Python 3.12 if needed).
 uv sync                 # create .venv and install dev dependencies
 uv run cbp reason-codes # list the dispute reason codes the pipeline models
 uv run cbp generate     # write a synthetic dataset to data/synthetic/*.csv
+uv run cbp features     # build the point-in-time feature table at data/features.csv
 ```
 
 ## Synthetic data
@@ -113,6 +114,47 @@ Renewals retry soft declines (`51`, `05`) with fixed spacing and stop on a hard 
 Disputes are only emitted if **filed** inside the window, mirroring production label
 censoring: the newest transactions have not had time to be disputed yet.
 
+## Features
+
+`cbp features` (or `chargeback_prediction.features.build_features()`) reads the CSV tables
+back with `read_dataset` and emits **one row per approved transaction** with 30 numeric
+features plus labels. The full documented table is in [docs/features.md](docs/features.md);
+it is rendered from the catalog in `features/spec.py`, and a test fails if the two drift.
+
+| Group | Examples |
+|---|---|
+| transaction | `amount_usd`, `is_renewal`, `attempt` (retry number) |
+| account | `account_age_days`, `email_disposable` |
+| geo / BIN | `ip_bin_mismatch`, `billing_bin_mismatch`, `ip_missing` |
+| velocity | `attempts_1h/24h/7d`, `declines_24h/30d`, `approved_usd_24h` |
+| card on file | `au_updates_90d` (account-updater reissues), `days_since_card_update` |
+| subscription / retry | `prior_subscription_declines`, `charged_after_cancel_request` |
+| prior disputes | `prior_disputes`, `prior_fraud_disputes`, `days_since_last_dispute` |
+
+**Point-in-time correctness is the main design constraint.** Each customer's and
+subscription's events are indexed into sorted timelines with prefix sums, and every query asks
+for events in `[t - window, t)`: nothing at or after the charge is visible. Prior-dispute
+features count disputes by **filing** date — a dispute on last month's charge that is filed
+next week is not something the merchant knew at authorization, and counting it by charge date
+is the most common leak in chargeback models. The default dataset (~37k rows) builds in under
+a second in pure Python.
+
+**Label censoring is explicit.** `label_mature` is true only once the 120-day dispute window
+has fully elapsed before the snapshot (`observed_until`). Recent rows with `disputed = false`
+are "not yet", not "no", and the time-based split in item 4 trains on mature rows only.
+
+Univariate lift on the default dataset (mature rows, base dispute rate 1.9%) confirms each
+planted pattern survives the pipeline as signal:
+
+| Feature | Share of rows | Dispute rate | Lift |
+|---|---|---|---|
+| `charged_after_cancel_request` > 0 | 0.2% | 86.4% | 45× |
+| `declines_24h` > 0 | 0.3% | 68.8% | 36× |
+| `email_disposable` > 0 | 0.5% | 66.9% | 35× |
+| `prior_fraud_disputes` > 0 | 0.5% | 31.4% | 17× |
+| `ip_bin_mismatch` > 0 | 1.5% | 24.8% | 13× |
+| `au_updates_90d` > 0 | 2.5% | 7.4% | 4× |
+
 ## Development
 
 ```bash
@@ -129,9 +171,11 @@ CI runs the same four steps on every push and pull request.
 ```
 src/chargeback_prediction/   package (src layout, typed: py.typed)
   reason_codes.py            Visa / Mastercard dispute reason-code catalog
-  synthetic/                 seeded generator: schema, config, personas, CSV writer
+  synthetic/                 seeded generator: schema, config, personas, CSV reader/writer
+  features/                  feature catalog (spec.py) and point-in-time pipeline
   cli.py                     `cbp` command-line entry point
 tests/                       pytest suite
+docs/features.md             generated feature table
 .github/workflows/ci.yml     lint, format, type-check, test
 ```
 
