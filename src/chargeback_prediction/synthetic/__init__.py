@@ -6,7 +6,7 @@ the behaviour patterns it simulates.
 
 from chargeback_prediction.synthetic.config import GeneratorConfig
 from chargeback_prediction.synthetic.generator import DatasetSummary, SyntheticDataset, generate
-from chargeback_prediction.synthetic.io import write_dataset
+from chargeback_prediction.synthetic.io import read_dataset, write_dataset
 from chargeback_prediction.synthetic.schema import (
     CardUpdate,
     CardUpdateSource,
@@ -33,5 +33,6 @@ __all__ = [
     "Transaction",
     "TransactionKind",
     "generate",
+    "read_dataset",
     "write_dataset",
 ]
