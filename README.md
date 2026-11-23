@@ -80,7 +80,38 @@ Requires [uv](https://docs.astral.sh/uv/) (it will fetch Python 3.12 if needed).
 ```bash
 uv sync                 # create .venv and install dev dependencies
 uv run cbp reason-codes # list the dispute reason codes the pipeline models
+uv run cbp generate     # write a synthetic dataset to data/synthetic/*.csv
 ```
+
+## Synthetic data
+
+`cbp generate` (or `chargeback_prediction.synthetic.generate()`) simulates a card-not-present
+subscription merchant. It is seeded and pure-stdlib, so the same `--seed` always produces the
+same dataset. The default run (5,000 customers over 540 days) yields about 40k authorizations
+and a ~1.7% dispute rate, roughly half of it friendly fraud.
+
+| Table | One row per | Notable columns |
+|---|---|---|
+| `customers` | account | `created_at`, `email_domain_type`, `card_bin`, `bin_country`, `persona`* |
+| `subscriptions` | subscription | `plan` (monthly/annual), `price_cents`, `cancel_requested_at` |
+| `transactions` | authorization attempt | `kind` (initial/renewal/one_off), `attempt`, `approved`, `decline_code`, `ip_country` |
+| `card_updates` | card-on-file change | `source` (account_updater/customer) |
+| `disputes` | chargeback | `reason_code`, `category`, `filed_at`, `is_friendly_fraud`* |
+
+\* Ground-truth labels for slicing evaluation results. **Never use them as features.**
+
+Four hidden personas generate the patterns the model has to learn:
+
+| Persona | Behaviour | Typical codes |
+|---|---|---|
+| good | Pays; rare genuine "not received" disputes | 13.1 / 4853 |
+| forgetful | Stops using the product, card gets reissued via account updater, disputes the renewal. 25% actually cancelled and were billed anyway (a *legitimate* dispute) | 13.2 / 4853, some 10.4 / 4837 |
+| serial disputer | Repeatedly claims fraud or non-receipt on their own one-off orders | 10.4 / 4837, 13.1 / 4853 |
+| fraudster | Stolen card: new account, disposable email, card-testing declines, IP vs. BIN country mismatch, purchase burst within 72h | 10.4 / 4837 |
+
+Renewals retry soft declines (`51`, `05`) with fixed spacing and stop on a hard decline (`54`).
+Disputes are only emitted if **filed** inside the window, mirroring production label
+censoring: the newest transactions have not had time to be disputed yet.
 
 ## Development
 
@@ -98,6 +129,7 @@ CI runs the same four steps on every push and pull request.
 ```
 src/chargeback_prediction/   package (src layout, typed: py.typed)
   reason_codes.py            Visa / Mastercard dispute reason-code catalog
+  synthetic/                 seeded generator: schema, config, personas, CSV writer
   cli.py                     `cbp` command-line entry point
 tests/                       pytest suite
 .github/workflows/ci.yml     lint, format, type-check, test
