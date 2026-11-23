@@ -1,20 +1,24 @@
 """Command-line entry point (``cbp``).
 
-Subcommands are added as pipeline stages land (score, explain to follow):
+Subcommands are added as pipeline stages land (score to follow):
 
 ``cbp generate``  write a synthetic dataset as CSV tables
 ``cbp features``  build the point-in-time feature table from those CSVs
 ``cbp train``     fit baseline models on a time-based split and write an evaluation report
+``cbp explain``   SHAP values and top risk factors per transaction for a trained model
 """
 
 from __future__ import annotations
 
 import argparse
+import math
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
 from chargeback_prediction import __version__
+from chargeback_prediction.explain.factors import DEFAULT_TOP_K
+from chargeback_prediction.explain.run import DEFAULT_BACKGROUND_SIZE
 from chargeback_prediction.features import build_features, render_feature_table
 from chargeback_prediction.modeling import FeatureMatrix, ModelKind, TrainConfig, train_baselines
 from chargeback_prediction.reason_codes import all_reason_codes
@@ -95,6 +99,43 @@ def _build_parser() -> argparse.ArgumentParser:
         help="model to train (repeatable; default: all)",
     )
     train.add_argument("--seed", type=int, default=train_defaults.seed)
+
+    exp = sub.add_parser(
+        "explain",
+        help="Explain a trained model: global SHAP importance and top factors per transaction.",
+    )
+    exp.add_argument(
+        "--features", type=Path, default=Path("data/features.csv"), help="feature table CSV"
+    )
+    exp.add_argument(
+        "--models", type=Path, default=Path("artifacts/baseline"), help="`cbp train` output dir"
+    )
+    exp.add_argument(
+        "--model",
+        choices=[k.value for k in ModelKind],
+        default=ModelKind.LOGREG.value,
+        help="which trained model to explain",
+    )
+    exp.add_argument(
+        "--transaction-id",
+        dest="transaction_ids",
+        action="append",
+        metavar="ID",
+        help="explain this transaction and print its summary (repeatable); "
+        "default: explain the whole test window and write a report",
+    )
+    exp.add_argument("--top-factors", type=int, default=DEFAULT_TOP_K, help="factors per row")
+    exp.add_argument("--top-risky", type=int, default=20, help="highest-risk test rows to write up")
+    exp.add_argument(
+        "--background",
+        type=int,
+        default=DEFAULT_BACKGROUND_SIZE,
+        help="training rows sampled as the SHAP background",
+    )
+    exp.add_argument(
+        "--out", type=Path, default=Path("artifacts/explain"), help="artifact directory"
+    )
+    exp.add_argument("--seed", type=int, default=0)
     return parser
 
 
@@ -179,6 +220,63 @@ def _cmd_train(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
     return 0
 
 
+def _cmd_explain(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    from chargeback_prediction.explain import (
+        ExplainConfig,
+        explain_test_window,
+        explain_transactions,
+        load_model,
+    )
+    from chargeback_prediction.explain.run import write_artifacts
+
+    kind = ModelKind(args.model)
+    try:
+        model = load_model(args.models, kind)
+    except FileNotFoundError as exc:
+        parser.error(f"{exc} not found; run `cbp train` first")
+    try:
+        matrix = FeatureMatrix.read_csv(args.features)
+    except FileNotFoundError:
+        parser.error(f"{args.features} not found; run `cbp features` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        config = ExplainConfig(
+            kind=kind,
+            top_k=args.top_factors,
+            background_size=args.background,
+            top_risky=args.top_risky,
+            seed=args.seed,
+        )
+        if args.transaction_ids:
+            for explanation in explain_transactions(model, matrix, args.transaction_ids, config):
+                print(explanation.summary())
+            return 0
+        report = explain_test_window(model, matrix, config)
+    except KeyError as exc:
+        parser.error(f"unknown transaction id {exc.args[0]!r}")
+    except ValueError as exc:
+        parser.error(str(exc))
+    paths = write_artifacts(report, args.out)
+
+    print(f"{kind.label}: explained {len(report.shap):,} test rows ", end="")
+    print(f"(additivity error {report.shap.additivity_error():.1e} log-odds)\n")
+    print(f"{'feature':<30}{'mean |SHAP|':>12}{'share':>8}")
+    for imp in report.importance[:10]:
+        print(f"{imp.feature:<30}{imp.mean_abs:>12.3f}{imp.share:>8.1%}")
+    for imp in (i for i in report.importance if i.dominant):
+        print(
+            f"warning: {imp.feature} alone moves some rows' odds by ×{math.exp(imp.max_abs):,.0f}"
+        )
+    if report.riskiest:
+        print("\nhighest-risk test transactions:")
+        for explanation in report.riskiest[:3]:
+            print(f"  {explanation.summary()}")
+    print(f"\nwrote {paths['report'].name}, {paths['explanations'].name}, ", end="")
+    print(f"{paths['importance'].name} to {args.out}/")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code."""
     parser = _build_parser()
@@ -191,6 +289,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_features(args, parser)
     if args.command == "train":
         return _cmd_train(args, parser)
+    if args.command == "explain":
+        return _cmd_explain(args, parser)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
 
 
