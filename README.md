@@ -87,6 +87,8 @@ uv run cbp explain      # SHAP importance + top factors for the riskiest test ro
 uv run cbp explain --model gbm --transaction-id txn_00036179   # one-paragraph explanation
 uv run cbp reason --transaction-id txn_00025755  # rationale + representment strategy for a dispute
 uv run cbp playbook     # backtest the representment playbook against the synthetic ground truth
+uv run cbp evidence --dispute-id dp_0000507  # draft representment packet for one dispute
+uv run cbp evidence     # readiness of every dispute's packet, per reason code
 ```
 
 ## Synthetic data
@@ -282,6 +284,25 @@ txn_00025755 · visa:10.4 Other Fraud - Card Absent Environment
   every *represent* was friendly fraud; the 90 *review* cases are where a score-based tie-breaker
   would help next (`cbp playbook`).
 
+## Representment evidence
+
+`cbp evidence` (or `chargeback_prediction.representment`) drafts the response packet for a
+dispute: the exhibits its reason code requires, built point in time from the raw tables, a
+readiness verdict, a rebuttal and an analyst-only checklist. Full write-up:
+[docs/representment.md](docs/representment.md); example packets in
+[docs/representment/](docs/representment/).
+
+- **Per-reason-code requirements.** Visa 10.4 needs CE 3.0 history (2+ undisputed charges on the
+  same card 120–365 days earlier); 13.2 needs a clean cancellation check; and so on. Evidence
+  that lives outside the data (AVS/CVV, 3DS, login logs, signed terms) becomes an `attach` item
+  naming the system to pull it from. The packet never claims evidence it doesn't hold.
+- **Submission vs. analyst-only.** Prior disputes, IP/issuer mismatches and partial amounts help
+  the analyst but don't belong in front of the issuer, so they stay below the line.
+- **Readiness is checked against ground truth.** Every 10.4 that met CE 3.0 from the data and
+  every 13.2 without a prior cancellation was friendly fraud; every `do_not_represent` was a
+  real merchant error. It also shows where the rules are too lenient (Mastercard 4837) or miss a
+  case (one-off purchases), which drives the next iteration.
+
 ## Development
 
 ```bash
@@ -303,12 +324,15 @@ src/chargeback_prediction/   package (src layout, typed: py.typed)
   modeling/                  feature matrix, label-aware time split, metrics, baselines, report
   explain/                   exact SHAP (linear + tree), top-factor summaries, explain report
   reasoning/                 representment playbook, LLM interface + clients, prompt, validation
+  representment/             evidence requirements per reason code, assembler, response packet
   cli.py                     `cbp` command-line entry point
 tests/                       pytest suite
 docs/features.md             generated feature table
 docs/baseline/               generated baseline report and calibration / PR plot
 docs/explain/                generated SHAP explainability reports per model
 docs/reasoning.md            LLM reasoning layer: design, guardrails, playbook backtest, examples
+docs/representment.md        evidence assembler: requirements, readiness, ground-truth check
+docs/representment/          generated example response packets
 .github/workflows/ci.yml     lint, format, type-check, test
 ```
 
