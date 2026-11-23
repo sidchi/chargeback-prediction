@@ -92,3 +92,47 @@ def test_features_reports_corrupt_dataset(
         main(["features", "--data", str(tmp_path)])
     assert exc.value.code == 2
     assert "customers.csv" in capsys.readouterr().err
+
+
+def test_train_command_writes_report_and_models(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    data, features, out = tmp_path / "synthetic", tmp_path / "features.csv", tmp_path / "art"
+    assert main(["generate", "--customers", "1500", "--seed", "11", "--out", str(data)]) == 0
+    assert main(["features", "--data", str(data), "--out", str(features)]) == 0
+    capsys.readouterr()
+
+    assert main(["train", "--features", str(features), "--out", str(out), "--model", "logreg"]) == 0
+    printed = capsys.readouterr().out
+    assert "Logistic regression" in printed
+    assert "Gradient boosting" not in printed
+    assert sorted(p.name for p in out.iterdir()) == [
+        "calibration.png",
+        "metrics.json",
+        "model_logreg.joblib",
+        "report.md",
+    ]
+
+
+def test_train_reports_missing_features(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        main(["train", "--features", str(tmp_path / "nope.csv")])
+    assert exc.value.code == 2
+    assert "run `cbp features` first" in capsys.readouterr().err
+
+
+def test_train_rejects_bad_split(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    features = tmp_path / "features.csv"
+    features.write_text("transaction_id\n", encoding="utf-8")
+    with pytest.raises(SystemExit) as exc:
+        main(["train", "--features", str(features)])
+    assert exc.value.code == 2
+    assert "missing columns" in capsys.readouterr().err
+
+    data = tmp_path / "synthetic"
+    assert main(["generate", "--customers", "200", "--out", str(data)]) == 0
+    assert main(["features", "--data", str(data), "--out", str(features)]) == 0
+    with pytest.raises(SystemExit) as exc:
+        main(["train", "--features", str(features), "--test-fraction", "1.5"])
+    assert exc.value.code == 2
+    assert "test_fraction" in capsys.readouterr().err
