@@ -8,6 +8,7 @@ Subcommands are added as pipeline stages land (score to follow):
 ``cbp explain``   SHAP values and top risk factors per transaction for a trained model
 ``cbp reason``    risk rationale and representment strategy for disputed transactions
 ``cbp playbook``  backtest the representment playbook against the synthetic ground truth
+``cbp evidence``  assemble representment evidence and a draft response packet per dispute
 """
 
 from __future__ import annotations
@@ -26,6 +27,7 @@ from chargeback_prediction.explain.run import DEFAULT_BACKGROUND_SIZE
 from chargeback_prediction.features import build_features, render_feature_table
 from chargeback_prediction.modeling import FeatureMatrix, ModelKind, TrainConfig, train_baselines
 from chargeback_prediction.reason_codes import all_reason_codes
+from chargeback_prediction.representment import DEFAULT_RESPONSE_DAYS
 from chargeback_prediction.synthetic import GeneratorConfig, generate, read_dataset, write_dataset
 
 API_KEY_ENV = "CBP_LLM_API_KEY"
@@ -198,6 +200,33 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     pb.add_argument(
         "--features", type=Path, default=Path("data/features.csv"), help="feature table CSV"
+    )
+
+    ev = sub.add_parser(
+        "evidence",
+        help="Assemble representment evidence and draft a response packet per dispute.",
+        description="With --dispute-id, print (or write) the draft packet for each dispute. "
+        "Without it, assemble every dispute and print readiness per reason code.",
+    )
+    ev.add_argument(
+        "--data", type=Path, default=Path("data/synthetic"), help="directory of dataset CSVs"
+    )
+    ev.add_argument(
+        "--dispute-id",
+        dest="dispute_ids",
+        action="append",
+        metavar="ID",
+        help="dispute to assemble (repeatable); default: summarise all disputes",
+    )
+    ev.add_argument(
+        "--response-days",
+        type=int,
+        default=DEFAULT_RESPONSE_DAYS,
+        help="days after filing the merchant has to respond (set to your acquirer's deadline)",
+    )
+    ev.add_argument("--json", action="store_true", help="print one JSON object per dispute")
+    ev.add_argument(
+        "--out", type=Path, help="write <dispute_id>.md per packet to this directory instead"
     )
     return parser
 
@@ -425,6 +454,53 @@ def _cmd_playbook(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
     return 0
 
 
+def _cmd_evidence(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    from chargeback_prediction.representment import (
+        EvidenceIndex,
+        ResponsePacket,
+        assemble,
+        assemble_all,
+        readiness_table,
+        render_readiness,
+    )
+
+    try:
+        dataset = read_dataset(args.data)
+    except FileNotFoundError as exc:
+        parser.error(f"{exc.filename} not found; run `cbp generate` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    packets: list[ResponsePacket]
+    try:
+        if args.dispute_ids:
+            index = EvidenceIndex(dataset)
+            packets = [
+                assemble(index, d, response_days=args.response_days)
+                for d in dict.fromkeys(args.dispute_ids)
+            ]
+        else:
+            packets = assemble_all(dataset, response_days=args.response_days)
+    except KeyError as exc:
+        parser.error(str(exc.args[0]))
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    if args.out:
+        args.out.mkdir(parents=True, exist_ok=True)
+        for p in packets:
+            (args.out / f"{p.dispute_id}.md").write_text(p.render_markdown(), encoding="utf-8")
+        print(f"wrote {len(packets)} packet(s) to {args.out}/")
+    elif args.json:
+        for p in packets:
+            print(json.dumps(p.to_dict(), ensure_ascii=False))
+    elif args.dispute_ids:
+        print("\n".join(p.render_markdown() for p in packets), end="")
+    if not args.dispute_ids and not args.json:
+        print(render_readiness(readiness_table(packets, dataset.disputes)), end="")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code."""
     parser = _build_parser()
@@ -443,6 +519,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_reason(args, parser)
     if args.command == "playbook":
         return _cmd_playbook(args, parser)
+    if args.command == "evidence":
+        return _cmd_evidence(args, parser)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
 
 
