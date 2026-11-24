@@ -82,6 +82,7 @@ uv sync                 # create .venv and install dev dependencies
 uv run cbp reason-codes # list the dispute reason codes the pipeline models
 uv run cbp generate     # write a synthetic dataset to data/synthetic/*.csv
 uv run cbp features     # build the point-in-time feature table at data/features.csv
+uv run cbp train        # fit baselines, write report + calibration plot to artifacts/baseline/
 ```
 
 ## Synthetic data
@@ -155,6 +156,51 @@ planted pattern survives the pipeline as signal:
 | `ip_bin_mismatch` > 0 | 1.5% | 24.8% | 13× |
 | `au_updates_90d` > 0 | 2.5% | 7.4% | 4× |
 
+## Baseline models
+
+`cbp train` (or `chargeback_prediction.modeling.train_baselines()`) fits two baselines and
+evaluates them on a held-out **future** window. The full generated report, including
+reliability tables, is in [docs/baseline/report.md](docs/baseline/report.md).
+
+**The split mirrors what you'd know on the day you train.** Disputes arrive up to 120 days
+after the charge, so on a given training date only charges older than that have final labels:
+
+```
+──────── train ────────┤◀── 120-day label gap ──▶├──────── test ────────▶ time
+                   train_end                  cutoff
+```
+
+Test is the newest 25% of mature rows; train is mature rows created more than 120 days before
+the test window starts, so every training dispute was filed before the first test charge.
+Rows in the gap and rows whose window is still open are dropped. Setting `--gap-days 0`
+shows how much an un-gapped split overstates performance (logistic regression PR-AUC
+0.345 → 0.367 on the default data).
+
+| Model | PR-AUC | Lift | Precision @ top 1% | Recall @ top 5% | ECE |
+|---|---|---|---|---|---|
+| Logistic regression (log1p + scaled, L2) | 0.345 | 14.5× | 71% | 47% | 0.014 |
+| Gradient boosting (depth 3, heavy L2) | 0.227 | 9.5× | 51% | 37% | 0.007 |
+| Random scorer | 0.024 | 1.0× | 2.4% | 5% | — |
+
+![Calibration and precision-recall curves](docs/baseline/calibration.png)
+
+Things worth noticing:
+
+- **The linear model wins.** The training window has only ~240 disputes and the planted
+  signals are mostly monotone flags (disposable email, IP/BIN mismatch, charge after a cancel
+  request), which is exactly where a regularised logistic regression is hard to beat. The GBM
+  is level at the very top of the queue but falls away by 1%; its hyperparameters were set
+  conservatively up front rather than tuned on the test window. Cross-validated tuning is a
+  later step.
+- **No class re-weighting**, so probabilities stay calibrated (ECE ≈ 1%): the retry and
+  representment decisions downstream multiply the score by dollars, so a 0.3 has to mean 30%.
+- **The lowest-scored decile is not the safest.** Logistic regression's bottom bin has a 3.6%
+  observed rate against 0.2% predicted: "looks perfectly normal" disputes (forgotten annual
+  renewals, genuine non-receipt) sit where the model is most confident. SHAP in item 5 should
+  show which features push those rows down.
+- **Metrics are hand-rolled in NumPy** (`modeling/metrics.py`) with explicit tie handling and
+  quantile calibration bins, and cross-checked against scikit-learn in the tests.
+
 ## Development
 
 ```bash
@@ -173,9 +219,11 @@ src/chargeback_prediction/   package (src layout, typed: py.typed)
   reason_codes.py            Visa / Mastercard dispute reason-code catalog
   synthetic/                 seeded generator: schema, config, personas, CSV reader/writer
   features/                  feature catalog (spec.py) and point-in-time pipeline
+  modeling/                  feature matrix, label-aware time split, metrics, baselines, report
   cli.py                     `cbp` command-line entry point
 tests/                       pytest suite
 docs/features.md             generated feature table
+docs/baseline/               generated baseline report and calibration / PR plot
 .github/workflows/ci.yml     lint, format, type-check, test
 ```
 

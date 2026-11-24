@@ -1,9 +1,10 @@
 """Command-line entry point (``cbp``).
 
-Subcommands are added as pipeline stages land (train, score, explain to follow):
+Subcommands are added as pipeline stages land (score, explain to follow):
 
 ``cbp generate``  write a synthetic dataset as CSV tables
 ``cbp features``  build the point-in-time feature table from those CSVs
+``cbp train``     fit baseline models on a time-based split and write an evaluation report
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from pathlib import Path
 
 from chargeback_prediction import __version__
 from chargeback_prediction.features import build_features, render_feature_table
+from chargeback_prediction.modeling import FeatureMatrix, ModelKind, TrainConfig, train_baselines
 from chargeback_prediction.reason_codes import all_reason_codes
 from chargeback_prediction.synthetic import GeneratorConfig, generate, read_dataset, write_dataset
 
@@ -62,6 +64,37 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="print the documented feature table (docs/features.md) instead of building",
     )
+
+    train_defaults = TrainConfig()
+    train = sub.add_parser(
+        "train", help="Train baseline models on a time-based split and write an evaluation report."
+    )
+    train.add_argument(
+        "--features", type=Path, default=Path("data/features.csv"), help="feature table CSV"
+    )
+    train.add_argument(
+        "--out", type=Path, default=Path("artifacts/baseline"), help="artifact directory"
+    )
+    train.add_argument(
+        "--test-fraction",
+        type=float,
+        default=train_defaults.test_fraction,
+        help="share of mature rows (newest) held out for testing",
+    )
+    train.add_argument(
+        "--gap-days",
+        type=int,
+        default=train_defaults.label_gap_days,
+        help="days between train end and test start, so training labels are final",
+    )
+    train.add_argument(
+        "--model",
+        dest="models",
+        action="append",
+        choices=[k.value for k in ModelKind],
+        help="model to train (repeatable; default: all)",
+    )
+    train.add_argument("--seed", type=int, default=train_defaults.seed)
     return parser
 
 
@@ -107,6 +140,45 @@ def _cmd_features(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
     return 0
 
 
+def _cmd_train(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    # Imported lazily: matplotlib adds noticeable startup time the other commands don't need.
+    from chargeback_prediction.modeling.report import write_artifacts
+
+    try:
+        matrix = FeatureMatrix.read_csv(args.features)
+    except FileNotFoundError:
+        parser.error(f"{args.features} not found; run `cbp features` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        config = TrainConfig(
+            models=tuple(ModelKind(m) for m in (args.models or [k.value for k in ModelKind])),
+            test_fraction=args.test_fraction,
+            label_gap_days=args.gap_days,
+            seed=args.seed,
+        )
+        report = train_baselines(matrix, config)
+    except ValueError as exc:
+        parser.error(str(exc))
+    paths = write_artifacts(report, args.out)
+
+    split, base = report.split, report.test_base_rate
+    print(f"train  {len(split.train):>7} rows  {int(split.train.y.sum()):>5} disputes")
+    print(f"test   {len(split.test):>7} rows  {int(split.test.y.sum()):>5} disputes  ({base:.2%})")
+    print()
+    top = report.evaluations[0].at_k[-1].budget
+    print(f"{'model':<22}{'PR-AUC':>8}{'lift':>7}{'Brier':>9}{'ECE':>8}  P@{top:.0%}")
+    for ev in report.evaluations:
+        print(
+            f"{ev.kind.label:<22}{ev.pr_auc:>8.3f}{ev.pr_auc / base:>6.1f}x"
+            f"{ev.brier:>9.4f}{ev.ece:>8.4f}  {ev.at_k[-1].precision:.1%}"
+        )
+    print(
+        f"\nwrote {paths['report']}, {paths['figure'].name}, metrics.json and models to {args.out}/"
+    )
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code."""
     parser = _build_parser()
@@ -117,6 +189,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_generate(args, parser)
     if args.command == "features":
         return _cmd_features(args, parser)
+    if args.command == "train":
+        return _cmd_train(args, parser)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
 
 

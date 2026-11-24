@@ -6,7 +6,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [{ name = "Siddharth Chitambar" }]
-dependencies = []
+dependencies = [
+    "joblib>=1.4",
+    "matplotlib>=3.9",
+    "numpy>=2.1",
+    "scikit-learn>=1.5",
+]
 
 [project.scripts]
 cbp = "chargeback_prediction.cli:main"
@@ -33,6 +38,12 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "N", "SIM", "RUF", "PT", "C4"]
+# Typographic characters used deliberately in docstrings and Markdown reports.
+allowed-confusables = ["–", "−", "×"]
+
+[tool.ruff.lint.pep8-naming]
+# Design matrices follow the scikit-learn convention of a capital X.
+ignore-names = ["X"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -41,6 +52,11 @@ quote-style = "double"
 python_version = "3.12"
 strict = true
 files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+# scikit-learn and joblib ship no type information.
+module = ["sklearn.*", "joblib.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
