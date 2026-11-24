@@ -1,6 +1,6 @@
 """Command-line entry point (``cbp``).
 
-Subcommands are added as pipeline stages land (score to follow):
+Subcommands, in pipeline order:
 
 ``cbp generate``  write a synthetic dataset as CSV tables
 ``cbp features``  build the point-in-time feature table from those CSVs
@@ -9,6 +9,7 @@ Subcommands are added as pipeline stages land (score to follow):
 ``cbp reason``    risk rationale and representment strategy for disputed transactions
 ``cbp playbook``  backtest the representment playbook against the synthetic ground truth
 ``cbp evidence``  assemble representment evidence and a draft response packet per dispute
+``cbp serve``     run the HTTP scoring service (``/v1/score``, ``/v1/explain``)
 """
 
 from __future__ import annotations
@@ -227,6 +228,24 @@ def _build_parser() -> argparse.ArgumentParser:
     ev.add_argument("--json", action="store_true", help="print one JSON object per dispute")
     ev.add_argument(
         "--out", type=Path, help="write <dispute_id>.md per packet to this directory instead"
+    )
+
+    srv = sub.add_parser(
+        "serve",
+        help="Run the HTTP scoring service (FastAPI): /v1/score, /v1/explain, /docs.",
+        description="Loads the model and its SHAP background once at startup. Unset options "
+        "fall back to CBP_* environment variables (see docs/service.md). For an LLM-written "
+        f"rationale set CBP_LLM_BASE_URL and CBP_LLM_MODEL (key in ${API_KEY_ENV}); otherwise "
+        "the deterministic mock is used.",
+    )
+    srv.add_argument("--host", default="127.0.0.1", help="interface to bind (0.0.0.0 in Docker)")
+    srv.add_argument("--port", type=int, default=8000)
+    srv.add_argument("--models", type=Path, help="`cbp train` output dir [CBP_MODELS_DIR]")
+    srv.add_argument(
+        "--features", type=Path, help="feature table for the SHAP background [CBP_FEATURES]"
+    )
+    srv.add_argument(
+        "--model", choices=[k.value for k in ModelKind], help="model to serve [CBP_MODEL]"
     )
     return parser
 
@@ -501,6 +520,33 @@ def _cmd_evidence(args: argparse.Namespace, parser: argparse.ArgumentParser) -> 
     return 0
 
 
+def _cmd_serve(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    import dataclasses
+
+    import uvicorn
+
+    from chargeback_prediction.service import Settings, create_app
+
+    try:
+        env = Settings.from_env()
+        settings = dataclasses.replace(
+            env,
+            models_dir=args.models or env.models_dir,
+            features=args.features or env.features,
+            model=ModelKind(args.model) if args.model else env.model,
+        )
+        scorer = settings.load_scorer()
+    except FileNotFoundError as exc:
+        parser.error(f"{exc.filename or exc} not found; run `cbp features` and `cbp train` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+    print(
+        f"serving {scorer.model_id} (LLM: {scorer.llm_provider}) on http://{args.host}:{args.port}"
+    )
+    uvicorn.run(create_app(scorer), host=args.host, port=args.port)
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code."""
     parser = _build_parser()
@@ -521,6 +567,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_playbook(args, parser)
     if args.command == "evidence":
         return _cmd_evidence(args, parser)
+    if args.command == "serve":
+        return _cmd_serve(args, parser)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
 
 

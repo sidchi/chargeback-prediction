@@ -30,3 +30,32 @@ jobs:
         run: uv run mypy
       - name: Test
         run: uv run pytest
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image (generates synthetic data and trains at build time)
+        run: docker build -t chargeback-prediction:ci .
+      - name: Smoke-test the running service
+        run: |
+          docker run -d --name cbp -p 8000:8000 chargeback-prediction:ci
+          curl -fsS --retry 60 --retry-all-errors --retry-delay 1 http://localhost:8000/health
+          curl -fsS http://localhost:8000/v1/model
+          curl -fsS -X POST http://localhost:8000/v1/score \
+            -H 'Content-Type: application/json' -d @examples/score_request.json > score.json
+          curl -fsS -X POST http://localhost:8000/v1/explain \
+            -H 'Content-Type: application/json' -d @examples/explain_request.json > explain.json
+          python3 - <<'PY'
+          import json
+          scores = {r["transaction_id"]: r["probability"] for r in json.load(open("score.json"))["results"]}
+          assert scores["txn_demo_card_testing"] > scores["txn_demo_typical_renewal"], scores
+          explain = json.load(open("explain.json"))
+          assert explain["factors"] and explain["rationale"]["reason_code"] == "visa:13.2", explain
+          print(json.dumps(scores, indent=2))
+          print(explain["summary"])
+          PY
+          docker inspect --format '{{.Config.User}}' chargeback-prediction:ci | grep -qx cbp
+      - name: Container logs
+        if: always()
+        run: docker logs cbp || true
