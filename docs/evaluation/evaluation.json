@@ -1,0 +1,196 @@
+{
+  "test_rows": 7013,
+  "test_disputes": 167,
+  "cost_model": {
+    "dispute_fee_usd": 25.0,
+    "ops_cost_per_dispute_usd": 20.0,
+    "representment_recovery_rate": 0.25,
+    "gross_margin": 0.8,
+    "false_decline_churn_rate": 0.15,
+    "customer_lifetime_value_usd": 120.0,
+    "action_cost_usd": 0.1
+  },
+  "approve_all": {
+    "blocked": 0,
+    "disputes_blocked": 0,
+    "false_declines": 0,
+    "total_cost": 17214.4875,
+    "cost_per_1k": 2454.653857122487,
+    "savings_vs_approve_all": 0.0,
+    "residual_dispute_ratio": 0.023812918864965064
+  },
+  "perfect_foresight": {
+    "blocked": 167,
+    "disputes_blocked": 167,
+    "false_declines": 0,
+    "total_cost": 16.7,
+    "cost_per_1k": 2.3812918864965065,
+    "savings_vs_approve_all": 17197.7875,
+    "residual_dispute_ratio": 0.0
+  },
+  "recommended": "logreg",
+  "models": {
+    "logreg": {
+      "pr_auc": {
+        "estimate": 0.3445648405876832,
+        "low": 0.2689545464509521,
+        "high": 0.4306501277419051,
+        "level": 0.95
+      },
+      "savings_per_1k": {
+        "estimate": 611.418936261229,
+        "low": 359.9560138314553,
+        "high": 850.2681537858258,
+        "level": 0.95
+      },
+      "hindsight_threshold": 0.25563195899764246,
+      "policies": {
+        "expected_cost": {
+          "blocked": 82,
+          "disputes_blocked": 55,
+          "false_declines": 27,
+          "total_cost": 12926.606500000002,
+          "cost_per_1k": 1843.234920861258,
+          "savings_vs_approve_all": 4287.880999999998,
+          "residual_dispute_ratio": 0.016159284374549127
+        },
+        "review_budget": {
+          "blocked": 70,
+          "disputes_blocked": 50,
+          "false_declines": 20,
+          "total_cost": 13014.8195,
+          "cost_per_1k": 1855.813417938115,
+          "savings_vs_approve_all": 4199.668,
+          "residual_dispute_ratio": 0.016851505113063516
+        },
+        "hindsight_threshold": {
+          "blocked": 105,
+          "disputes_blocked": 66,
+          "false_declines": 39,
+          "total_cost": 12318.909500000002,
+          "cost_per_1k": 1756.5819905889066,
+          "savings_vs_approve_all": 4895.577999999998,
+          "residual_dispute_ratio": 0.014620729588882456
+        }
+      },
+      "categories": {
+        "consumer": [
+          28,
+          103
+        ],
+        "fraud": [
+          27,
+          64
+        ]
+      },
+      "sensitivity": [
+        {
+          "multiplier": 0.5,
+          "savings_per_1k": 879.4567945244546
+        },
+        {
+          "multiplier": 1.0,
+          "savings_per_1k": 611.418936261229
+        },
+        {
+          "multiplier": 2.0,
+          "savings_per_1k": 473.18408669613586
+        },
+        {
+          "multiplier": 4.0,
+          "savings_per_1k": 383.60972479680595
+        }
+      ]
+    },
+    "gbm": {
+      "pr_auc": {
+        "estimate": 0.22653633460021314,
+        "low": 0.16321644769436702,
+        "high": 0.30050613703275336,
+        "level": 0.95
+      },
+      "savings_per_1k": {
+        "estimate": 273.3755168971911,
+        "low": 117.13148795094762,
+        "high": 436.52906388136256,
+        "level": 0.95
+      },
+      "hindsight_threshold": 0.1621572697311166,
+      "policies": {
+        "expected_cost": {
+          "blocked": 33,
+          "disputes_blocked": 25,
+          "false_declines": 8,
+          "total_cost": 15297.305,
+          "cost_per_1k": 2181.278340225296,
+          "savings_vs_approve_all": 1917.182499999999,
+          "residual_dispute_ratio": 0.020343839541547278
+        },
+        "review_budget": {
+          "blocked": 70,
+          "disputes_blocked": 36,
+          "false_declines": 34,
+          "total_cost": 15709.861000000003,
+          "cost_per_1k": 2240.105660915443,
+          "savings_vs_approve_all": 1504.6264999999967,
+          "residual_dispute_ratio": 0.018867924528301886
+        },
+        "hindsight_threshold": {
+          "blocked": 63,
+          "disputes_blocked": 36,
+          "false_declines": 27,
+          "total_cost": 15175.745,
+          "cost_per_1k": 2163.944816768858,
+          "savings_vs_approve_all": 2038.7424999999985,
+          "residual_dispute_ratio": 0.018848920863309353
+        }
+      },
+      "categories": {
+        "consumer": [
+          0,
+          103
+        ],
+        "fraud": [
+          25,
+          64
+        ]
+      },
+      "sensitivity": [
+        {
+          "multiplier": 0.5,
+          "savings_per_1k": 331.5938257521743
+        },
+        {
+          "multiplier": 1.0,
+          "savings_per_1k": 273.3755168971911
+        },
+        {
+          "multiplier": 2.0,
+          "savings_per_1k": 193.77334949379747
+        },
+        {
+          "multiplier": 4.0,
+          "savings_per_1k": 157.8400827035507
+        }
+      ]
+    }
+  },
+  "comparisons": [
+    {
+      "better": "logreg",
+      "worse": "gbm",
+      "pr_auc_difference": {
+        "estimate": 0.11802850598747008,
+        "low": 0.046744507094058,
+        "high": 0.19393841371631318,
+        "level": 0.95
+      },
+      "savings_difference_per_1k": {
+        "estimate": 338.04341936403785,
+        "low": 120.32822615143245,
+        "high": 557.7587337801227,
+        "level": 0.95
+      }
+    }
+  ]
+}
