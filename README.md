@@ -89,6 +89,14 @@ uv run cbp reason --transaction-id txn_00025755  # rationale + representment str
 uv run cbp playbook     # backtest the representment playbook against the synthetic ground truth
 uv run cbp evidence --dispute-id dp_0000507  # draft representment packet for one dispute
 uv run cbp evidence     # readiness of every dispute's packet, per reason code
+uv run cbp serve        # HTTP scoring service: /v1/score, /v1/explain, docs at :8000/docs
+```
+
+Or skip the setup and run the service in Docker (it trains on synthetic data at build time):
+
+```bash
+docker build -t chargeback-prediction . && docker run --rm -p 8000:8000 chargeback-prediction
+curl -s localhost:8000/v1/score -H 'Content-Type: application/json' -d @examples/score_request.json
 ```
 
 ## Synthetic data
@@ -303,6 +311,29 @@ readiness verdict, a rebuttal and an analyst-only checklist. Full write-up:
   real merchant error. It also shows where the rules are too lenient (Mastercard 4837) or miss a
   case (one-off purchases), which drives the next iteration.
 
+## Scoring service
+
+`cbp serve` (or `chargeback_prediction.service.create_app()`) puts the model behind FastAPI.
+Full write-up with request/response examples: [docs/service.md](docs/service.md).
+
+| Endpoint | Does |
+|---|---|
+| `POST /v1/score` | dispute probability and relative risk for up to 1,000 transactions |
+| `POST /v1/explain` | one transaction: exact SHAP factors and summary; with `reason_code`, also the representment rationale and strategy |
+| `GET /v1/model` | loaded model id, feature order, typical-transaction baseline |
+| `GET /health`, `/docs` | health check, interactive OpenAPI docs |
+
+- **Feature vectors in, probabilities out.** Features are point-in-time history aggregates, so
+  they come from the feature pipeline (a feature store in production) and the service stays
+  stateless. Thresholds are business policy and stay with the caller.
+- **Strict contract.** Every feature is typed and bounded, unknown fields are rejected, and a
+  test pins the schema to the feature catalog: a missing feature is a 422, never a silent zero.
+- **Traceable.** Every response carries `model_id` (kind + artifact hash), and `/v1/explain`
+  reproduces `cbp explain` exactly for the same transaction.
+- **Fails at deploy, not at request.** The model and SHAP background load once at startup; CPU
+  work runs in sync endpoints on the thread pool, and the LLM is only on the `/v1/explain` path
+  with a deterministic fallback.
+
 ## Development
 
 ```bash
@@ -312,7 +343,8 @@ uv run mypy                  # strict type-check
 uv run pytest                # tests + coverage
 ```
 
-CI runs the same four steps on every push and pull request.
+CI runs the same four steps on every push and pull request, then builds the Docker image and
+smoke-tests the running container against `examples/*.json`.
 
 ## Project layout
 
@@ -325,6 +357,7 @@ src/chargeback_prediction/   package (src layout, typed: py.typed)
   explain/                   exact SHAP (linear + tree), top-factor summaries, explain report
   reasoning/                 representment playbook, LLM interface + clients, prompt, validation
   representment/             evidence requirements per reason code, assembler, response packet
+  service/                   FastAPI app, request/response schemas, framework-free Scorer
   cli.py                     `cbp` command-line entry point
 tests/                       pytest suite
 docs/features.md             generated feature table
@@ -333,7 +366,10 @@ docs/explain/                generated SHAP explainability reports per model
 docs/reasoning.md            LLM reasoning layer: design, guardrails, playbook backtest, examples
 docs/representment.md        evidence assembler: requirements, readiness, ground-truth check
 docs/representment/          generated example response packets
-.github/workflows/ci.yml     lint, format, type-check, test
+docs/service.md              scoring service: endpoints, configuration, design notes
+examples/                    sample /v1/score and /v1/explain request bodies (synthetic)
+Dockerfile                   self-contained demo image (trains on synthetic data at build)
+.github/workflows/ci.yml     lint, format, type-check, test; Docker build + smoke test
 ```
 
 ## License
