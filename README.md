@@ -83,6 +83,8 @@ uv run cbp reason-codes # list the dispute reason codes the pipeline models
 uv run cbp generate     # write a synthetic dataset to data/synthetic/*.csv
 uv run cbp features     # build the point-in-time feature table at data/features.csv
 uv run cbp train        # fit baselines, write report + calibration plot to artifacts/baseline/
+uv run cbp explain      # SHAP importance + top factors for the riskiest test rows (artifacts/explain/)
+uv run cbp explain --model gbm --transaction-id txn_00036179   # one-paragraph explanation
 ```
 
 ## Synthetic data
@@ -195,11 +197,57 @@ Things worth noticing:
 - **No class re-weighting**, so probabilities stay calibrated (ECE ≈ 1%): the retry and
   representment decisions downstream multiply the score by dollars, so a 0.3 has to mean 30%.
 - **The lowest-scored decile is not the safest.** Logistic regression's bottom bin has a 3.6%
-  observed rate against 0.2% predicted: "looks perfectly normal" disputes (forgotten annual
-  renewals, genuine non-receipt) sit where the model is most confident. SHAP in item 5 should
-  show which features push those rows down.
+  observed rate against 0.2% predicted: "looks perfectly normal" disputes sit where the model
+  is most confident. SHAP (below) shows why.
 - **Metrics are hand-rolled in NumPy** (`modeling/metrics.py`) with explicit tie handling and
   quantile calibration bins, and cross-checked against scikit-learn in the tests.
+
+## Explainability
+
+`cbp explain` (or `chargeback_prediction.explain`) attributes every score to its features with
+**exact interventional SHAP values** in log-odds, against a sample of training-window rows, and
+turns them into a ranked, plain-language summary per transaction:
+
+```
+txn_00036179: dispute risk 69.9% (44.8× a typical transaction at 1.6%). Raised by
+account_age_days = 0.2 days (×10.27 odds); is_one_off = yes (×4.20 odds);
+days_since_prev_attempt = 0.1 days (×3.34 odds).
+```
+
+Contributions are shown as odds multipliers (`exp(SHAP)`) because they compose: ×2 and ×3
+mean ×6. `base + Σ SHAP` reproduces each row's log-odds to ~1e-14, and the tests check every
+value against a brute-force enumeration of all feature coalitions. Generated reports:
+[logistic regression](docs/explain/report_logreg.md), [gradient boosting](docs/explain/report_gbm.md).
+
+**Why not the `shap` package?** Its `TreeExplainer` fails its own additivity check on
+scikit-learn's `HistGradientBoostingClassifier` (off by ~0.25 log-odds on this model), and it
+would add numba, llvmlite and pandas to a service that otherwise needs only NumPy and
+scikit-learn. Both baselines admit cheap exact solutions instead:
+
+- **Linear model:** the preprocessing is element-wise, so the log-odds are a sum of one-feature
+  terms and `φᵢ = wᵢ·(T(x)ᵢ − mean T(z)ᵢ)`. The code checks the element-wise assumption.
+- **Gradient boosting:** interventional Tree SHAP per leaf. A leaf's credit depends only on
+  which of its path features `x` and the background row `z` each satisfy, so rows are grouped
+  into at most `2^depth` patterns. Explaining all 7,013 test rows takes well under a second.
+
+What the explanations surfaced on the default synthetic data:
+
+- **The bottom decile's misses are forgotten annual renewals.** Of the 25 disputes among the
+  logistic regression's lowest-scored 10%, 92% are annual-plan renewals, mostly Visa 13.2 /
+  Mastercard 4853 (cancelled recurring / not as described). `plan_is_annual` is the biggest
+  push down (−1.57 log-odds, ×0.21 odds): the model learned "annual customers are loyal"
+  and misses the year-later "I forgot I signed up" dispute. An annual × renewal ×
+  months-since-last-charge interaction, or a pre-renewal reminder flag, is the obvious next
+  feature.
+- **Single-feature dominance warnings.** The report flags any feature that alone moves some
+  row's odds by ×100 or more. For logistic regression, `attempts_1h` reaches ×750,000: it is
+  non-zero on only 9 training rows, all disputed (near separation), so the weight is
+  extrapolated and those scores read as >99.9% when 4 of the 7 matching test rows were
+  disputed. The GBM, with at least 100 rows per leaf, can't do this. Capping or binning sparse
+  velocity counts, or stronger regularisation, is the fix; the warning makes it visible.
+- **The two models disagree about what matters.** Logistic regression leans on renewal and
+  decline history; the GBM on `is_one_off`, subscription age and card-on-file recency. Rows
+  where they disagree are good candidates for manual review.
 
 ## Development
 
@@ -220,10 +268,12 @@ src/chargeback_prediction/   package (src layout, typed: py.typed)
   synthetic/                 seeded generator: schema, config, personas, CSV reader/writer
   features/                  feature catalog (spec.py) and point-in-time pipeline
   modeling/                  feature matrix, label-aware time split, metrics, baselines, report
+  explain/                   exact SHAP (linear + tree), top-factor summaries, explain report
   cli.py                     `cbp` command-line entry point
 tests/                       pytest suite
 docs/features.md             generated feature table
 docs/baseline/               generated baseline report and calibration / PR plot
+docs/explain/                generated SHAP explainability reports per model
 .github/workflows/ci.yml     lint, format, type-check, test
 ```
 
