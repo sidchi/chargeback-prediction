@@ -83,6 +83,7 @@ uv run cbp reason-codes # list the dispute reason codes the pipeline models
 uv run cbp generate     # write a synthetic dataset to data/synthetic/*.csv
 uv run cbp features     # build the point-in-time feature table at data/features.csv
 uv run cbp train        # fit baselines, write report + calibration plot to artifacts/baseline/
+uv run cbp evaluate     # cost-weighted evaluation + model card (artifacts/evaluation/)
 uv run cbp explain      # SHAP importance + top factors for the riskiest test rows (artifacts/explain/)
 uv run cbp explain --model gbm --transaction-id txn_00036179   # one-paragraph explanation
 uv run cbp reason --transaction-id txn_00025755  # rationale + representment strategy for a dispute
@@ -213,6 +214,55 @@ Things worth noticing:
   is most confident. SHAP (below) shows why.
 - **Metrics are hand-rolled in NumPy** (`modeling/metrics.py`) with explicit tie handling and
   quantile calibration bins, and cross-checked against scikit-learn in the tests.
+
+## Evaluation report
+
+`cbp evaluate` (or `chargeback_prediction.evaluation.run_evaluation()`) asks the question the
+metrics above don't: **what is acting on the score worth in dollars, and how sure are we?**
+Generated outputs: [cost report](docs/evaluation/report.md),
+[model card](docs/evaluation/model_card.md), and a walkthrough notebook with charts,
+[notebooks/evaluation.ipynb](notebooks/evaluation.ipynb).
+
+Each test charge lands in one of four cells. The two mistakes have different prices, and both
+scale with the amount:
+
+| | disputed | not disputed |
+|---|---|---|
+| **blocked** | dispute avoided (action cost) | false decline: lost margin + churn × LTV |
+| **approved** | chargeback: unrecovered amount + fee + ops | normal sale |
+
+With calibrated probabilities the cheapest decision needs no tuned threshold: block when
+`p · C_chargeback(amount) > (1 − p) · C_false_decline(amount) + C_action`. That rule is
+compared against approving everything, a fixed 1% review budget, the best single threshold
+*chosen in hindsight* (an unattainable upper bound for any threshold) and perfect foresight.
+Dollar assumptions are illustrative defaults in `CostModel`, all overridable from the CLI
+(`--dispute-fee`, `--margin`, `--ltv`, ...).
+
+| Model | PR-AUC (95% CI) | Saved per 1k charges (95% CI) | Blocked | Share of achievable saving |
+|---|---|---|---|---|
+| Logistic regression | 0.345 [0.269, 0.431] | $611 [$360, $850] | 1.2% | 24.9% |
+| Gradient boosting | 0.227 [0.163, 0.301] | $273 [$117, $437] | 0.5% | 11.1% |
+
+![Savings curves and sensitivity](docs/evaluation/cost_curve.png)
+
+- **Intervals, not point estimates.** The test window has 167 disputes, so every headline
+  number carries a stratified bootstrap interval (resampling within disputed and undisputed
+  rows keeps the base rate fixed, which PR-AUC depends on). The model comparison uses a
+  *paired* bootstrap on the same resampled rows: logistic regression beats GBM by +0.118
+  PR-AUC [+0.047, +0.194] and $338 per 1k charges [$120, $558], so the gap is not noise.
+- **The untuned rule lands near the peak.** It saves $4,288 on the window against $4,896 for
+  the best threshold picked with the labels, while needing no labels at all, which is the
+  payoff for keeping the models calibrated.
+- **Friendly fraud is the hard part.** The rule blocks 42% of stolen-card disputes but only
+  27% of "consumer" disputes (and GBM blocks none): a forgotten renewal looks like any other
+  renewal. Those are better attacked with reminders, clearer descriptors and easy cancellation
+  than with blocks.
+- **The decision is robust to the cost assumptions.** Making false declines 4× pricier cuts
+  blocks from 82 to 67 and still saves $384 per 1k charges; the rule re-derives its cut-off
+  from the costs with no retraining.
+
+`cbp evaluate` retrains on the same time split as `cbp train` (deterministic, ~3 s) rather
+than loading pickled models, so the scores always line up with the split being evaluated.
 
 ## Explainability
 
@@ -354,6 +404,7 @@ src/chargeback_prediction/   package (src layout, typed: py.typed)
   synthetic/                 seeded generator: schema, config, personas, CSV reader/writer
   features/                  feature catalog (spec.py) and point-in-time pipeline
   modeling/                  feature matrix, label-aware time split, metrics, baselines, report
+  evaluation/                cost model, blocking policies, bootstrap intervals, model card
   explain/                   exact SHAP (linear + tree), top-factor summaries, explain report
   reasoning/                 representment playbook, LLM interface + clients, prompt, validation
   representment/             evidence requirements per reason code, assembler, response packet
@@ -362,7 +413,9 @@ src/chargeback_prediction/   package (src layout, typed: py.typed)
 tests/                       pytest suite
 docs/features.md             generated feature table
 docs/baseline/               generated baseline report and calibration / PR plot
+docs/evaluation/             generated cost report, model card and savings plot
 docs/explain/                generated SHAP explainability reports per model
+notebooks/evaluation.ipynb   evaluation walkthrough with charts (`uv run --with jupyter jupyter lab`)
 docs/reasoning.md            LLM reasoning layer: design, guardrails, playbook backtest, examples
 docs/representment.md        evidence assembler: requirements, readiness, ground-truth check
 docs/representment/          generated example response packets

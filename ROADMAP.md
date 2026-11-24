@@ -8,5 +8,5 @@ ML + LLM pipeline that scores card transactions for dispute risk and explains ea
 - [x] 6. LLM reasoning layer: turn features + SHAP + reason code into a human-readable risk rationale and a suggested representment strategy (provider-agnostic interface, mock for tests)
 - [x] 7. Representment evidence assembler: given a dispute, gather the relevant evidence fields per reason code and produce a draft response packet
 - [x] 8. FastAPI service: /score and /explain endpoints, Pydantic schemas, OpenAPI docs, Dockerfile
-- [ ] 9. Evaluation report: model card, cost-weighted metrics (chargeback fees vs. false declines), notebook with charts
+- [x] 9. Evaluation report: model card, cost-weighted metrics (chargeback fees vs. false declines), notebook with charts
 - [ ] 10. Polish: architecture diagram, README walkthrough, demo GIF or recorded CLI run, tagged v1.0 release
