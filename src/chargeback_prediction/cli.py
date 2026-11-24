@@ -5,6 +5,7 @@ Subcommands, in pipeline order:
 ``cbp generate``  write a synthetic dataset as CSV tables
 ``cbp features``  build the point-in-time feature table from those CSVs
 ``cbp train``     fit baseline models on a time-based split and write an evaluation report
+``cbp evaluate``  cost-weighted evaluation with bootstrap intervals, and a model card
 ``cbp explain``   SHAP values and top risk factors per transaction for a trained model
 ``cbp reason``    risk rationale and representment strategy for disputed transactions
 ``cbp playbook``  backtest the representment playbook against the synthetic ground truth
@@ -23,6 +24,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from chargeback_prediction import __version__
+from chargeback_prediction.evaluation.bootstrap import DEFAULT_RESAMPLES
+from chargeback_prediction.evaluation.costs import CostModel
+from chargeback_prediction.evaluation.run import EvaluationConfig
 from chargeback_prediction.explain.factors import DEFAULT_TOP_K
 from chargeback_prediction.explain.run import DEFAULT_BACKGROUND_SIZE
 from chargeback_prediction.features import build_features, render_feature_table
@@ -109,6 +113,61 @@ def _build_parser() -> argparse.ArgumentParser:
         help="model to train (repeatable; default: all)",
     )
     train.add_argument("--seed", type=int, default=train_defaults.seed)
+
+    cost_defaults = CostModel()
+    evl = sub.add_parser(
+        "evaluate",
+        help="Cost-weighted evaluation (chargebacks vs. false declines) and a model card.",
+        description="Train the baselines on the same time split as `cbp train`, turn their "
+        "scores into blocking policies and price them in dollars, with bootstrap intervals. "
+        "Dollar defaults are illustrative; pass your own unit economics.",
+    )
+    evl.add_argument(
+        "--features", type=Path, default=Path("data/features.csv"), help="feature table CSV"
+    )
+    evl.add_argument(
+        "--out", type=Path, default=Path("artifacts/evaluation"), help="artifact directory"
+    )
+    evl.add_argument(
+        "--model",
+        dest="models",
+        action="append",
+        choices=[k.value for k in ModelKind],
+        help="model to evaluate (repeatable; default: all)",
+    )
+    evl.add_argument(
+        "--dispute-fee", type=float, default=cost_defaults.dispute_fee_usd, metavar="USD"
+    )
+    evl.add_argument(
+        "--ops-cost", type=float, default=cost_defaults.ops_cost_per_dispute_usd, metavar="USD"
+    )
+    evl.add_argument(
+        "--recovery-rate",
+        type=float,
+        default=cost_defaults.representment_recovery_rate,
+        help="expected share of a disputed amount recovered by representment",
+    )
+    evl.add_argument("--margin", type=float, default=cost_defaults.gross_margin)
+    evl.add_argument(
+        "--churn-rate",
+        type=float,
+        default=cost_defaults.false_decline_churn_rate,
+        help="probability a falsely declined subscriber churns",
+    )
+    evl.add_argument(
+        "--ltv", type=float, default=cost_defaults.customer_lifetime_value_usd, metavar="USD"
+    )
+    evl.add_argument(
+        "--action-cost", type=float, default=cost_defaults.action_cost_usd, metavar="USD"
+    )
+    evl.add_argument(
+        "--review-budget",
+        type=float,
+        default=EvaluationConfig().review_budget,
+        help="share of traffic the fixed-budget policy blocks",
+    )
+    evl.add_argument("--resamples", type=int, default=DEFAULT_RESAMPLES, help="bootstrap resamples")
+    evl.add_argument("--seed", type=int, default=train_defaults.seed)
 
     exp = sub.add_parser(
         "explain",
@@ -327,6 +386,66 @@ def _cmd_train(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
         )
     print(
         f"\nwrote {paths['report']}, {paths['figure'].name}, metrics.json and models to {args.out}/"
+    )
+    return 0
+
+
+def _cmd_evaluate(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    from chargeback_prediction.evaluation import read_dispute_categories, run_evaluation
+    from chargeback_prediction.evaluation.report import write_artifacts
+
+    try:
+        matrix = FeatureMatrix.read_csv(args.features)
+        categories = read_dispute_categories(args.features)
+    except FileNotFoundError:
+        parser.error(f"{args.features} not found; run `cbp features` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        costs = CostModel(
+            dispute_fee_usd=args.dispute_fee,
+            ops_cost_per_dispute_usd=args.ops_cost,
+            representment_recovery_rate=args.recovery_rate,
+            gross_margin=args.margin,
+            false_decline_churn_rate=args.churn_rate,
+            customer_lifetime_value_usd=args.ltv,
+            action_cost_usd=args.action_cost,
+        )
+        config = EvaluationConfig(
+            costs=costs,
+            review_budget=args.review_budget,
+            n_resamples=args.resamples,
+            seed=args.seed,
+        )
+        train_config = TrainConfig(
+            models=tuple(ModelKind(m) for m in (args.models or [k.value for k in ModelKind])),
+            seed=args.seed,
+        )
+        report = run_evaluation(
+            matrix, categories=categories, train_config=train_config, config=config
+        )
+    except ValueError as exc:
+        parser.error(str(exc))
+    paths = write_artifacts(report, args.out)
+
+    base = report.approve_all
+    print(
+        f"test window: {base.n:,} charges, {base.disputes:,} disputes; "
+        f"approve-all costs ${base.cost_per_1k:,.0f} per 1k charges"
+    )
+    print()
+    print(f"{'model':<22}{'PR-AUC [95% CI]':>24}{'saved/1k [95% CI]':>24}{'blocked':>9}")
+    for m in report.models:
+        s = m.savings_per_1k
+        saved = f"${s.estimate:,.0f} [${s.low:,.0f}, ${s.high:,.0f}]"
+        print(
+            f"{m.kind.label:<22}{m.pr_auc.format():>24}{saved:>24}"
+            f"{m.expected_cost.block_rate:>9.2%}"
+        )
+    print(f"\nrecommended: {report.recommended().kind.label}")
+    print(
+        f"wrote {paths['report']}, {paths['model_card'].name}, {paths['figure'].name}, "
+        f"{paths['metrics'].name}"
     )
     return 0
 
@@ -559,6 +678,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_features(args, parser)
     if args.command == "train":
         return _cmd_train(args, parser)
+    if args.command == "evaluate":
+        return _cmd_evaluate(args, parser)
     if args.command == "explain":
         return _cmd_explain(args, parser)
     if args.command == "reason":
