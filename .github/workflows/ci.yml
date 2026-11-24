@@ -40,7 +40,7 @@ jobs:
       - name: Smoke-test the running service
         run: |
           docker run -d --name cbp -p 8000:8000 chargeback-prediction:ci
-          curl -fsS --retry 30 --retry-connrefused --retry-delay 1 http://localhost:8000/health
+          curl -fsS --retry 60 --retry-all-errors --retry-delay 1 http://localhost:8000/health
           curl -fsS http://localhost:8000/v1/model
           curl -fsS -X POST http://localhost:8000/v1/score \
             -H 'Content-Type: application/json' -d @examples/score_request.json > score.json
