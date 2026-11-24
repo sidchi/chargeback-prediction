@@ -69,9 +69,9 @@ Numbers in parentheses map to items in [ROADMAP.md](ROADMAP.md).
   models can generalise across networks.
 - **Time-based splits only** (from item 4): disputes arrive 30–120 days after the charge, so a
   random split leaks the future and overstates performance.
-- **LLM is an explainer, not the scorer**: the calibrated model owns the probability; the LLM
-  turns features + SHAP values into prose behind a provider-agnostic interface that is mocked in
-  tests.
+- **LLM is an explainer, not the scorer or the decider**: the calibrated model owns the
+  probability, a rule-based playbook owns which representment strategies are allowed, and the
+  LLM writes the rationale behind a provider-agnostic interface that is mocked in tests (item 6).
 
 ## Getting started
 
@@ -85,6 +85,8 @@ uv run cbp features     # build the point-in-time feature table at data/features
 uv run cbp train        # fit baselines, write report + calibration plot to artifacts/baseline/
 uv run cbp explain      # SHAP importance + top factors for the riskiest test rows (artifacts/explain/)
 uv run cbp explain --model gbm --transaction-id txn_00036179   # one-paragraph explanation
+uv run cbp reason --transaction-id txn_00025755  # rationale + representment strategy for a dispute
+uv run cbp playbook     # backtest the representment playbook against the synthetic ground truth
 ```
 
 ## Synthetic data
@@ -249,6 +251,37 @@ What the explanations surfaced on the default synthetic data:
   decline history; the GBM on `is_one_off`, subscription age and card-on-file recency. Rows
   where they disagree are good candidates for manual review.
 
+## LLM reasoning layer
+
+`cbp reason` (or `chargeback_prediction.reasoning`) turns a disputed transaction's score, SHAP
+factors and reason code into a case note: a short rationale, a strategy (**represent**,
+**accept** or **review**) and the evidence to gather. Full write-up:
+[docs/reasoning.md](docs/reasoning.md).
+
+```
+txn_00025755 · visa:10.4 Other Fraud - Card Absent Environment
+  strategy:    represent (playbook: represent, confidence: high, llm via mock)
+  rationale:   ... the model scored this charge at 4.0%, 2.2× a typical transaction ...
+               Playbook signals: established account (1,041.3 days old) with no IP/issuer
+               country mismatch; 1 earlier dispute(s) filed by this customer ...
+  evidence:
+    - Visa Compelling Evidence 3.0: two or more prior undisputed transactions ...
+```
+
+- **Rules decide, the LLM explains.** A deterministic playbook reads features as stolen-card,
+  cardholder or merchant-error signals and fixes the allowed strategies per reason code. The LLM
+  may soften to *review* but cannot turn an *accept* into a fight, and a charge made after a
+  cancellation request is never argued. The evidence list comes from the playbook, never the LLM.
+- **Every reply is validated**: JSON only, strategy in the allowed set, bounded length, and key
+  factors that name only features the model was shown. A rejected reply is retried once with the
+  error fed back; after that a deterministic template is returned with `source="fallback"`.
+- **Provider-agnostic**: `LLMClient` is one method. `MockLLM` (default, offline), `ScriptedLLM`
+  for guardrail tests, and a standard-library `OpenAICompatibleClient` for hosted or local
+  `/chat/completions` servers (key from `$CBP_LLM_API_KEY`).
+- **Backtested**: on the synthetic ground truth, every fraud-coded *accept* was a stolen card and
+  every *represent* was friendly fraud; the 90 *review* cases are where a score-based tie-breaker
+  would help next (`cbp playbook`).
+
 ## Development
 
 ```bash
@@ -269,11 +302,13 @@ src/chargeback_prediction/   package (src layout, typed: py.typed)
   features/                  feature catalog (spec.py) and point-in-time pipeline
   modeling/                  feature matrix, label-aware time split, metrics, baselines, report
   explain/                   exact SHAP (linear + tree), top-factor summaries, explain report
+  reasoning/                 representment playbook, LLM interface + clients, prompt, validation
   cli.py                     `cbp` command-line entry point
 tests/                       pytest suite
 docs/features.md             generated feature table
 docs/baseline/               generated baseline report and calibration / PR plot
 docs/explain/                generated SHAP explainability reports per model
+docs/reasoning.md            LLM reasoning layer: design, guardrails, playbook backtest, examples
 .github/workflows/ci.yml     lint, format, type-check, test
 ```
 

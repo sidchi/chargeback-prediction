@@ -6,12 +6,16 @@ Subcommands are added as pipeline stages land (score to follow):
 ``cbp features``  build the point-in-time feature table from those CSVs
 ``cbp train``     fit baseline models on a time-based split and write an evaluation report
 ``cbp explain``   SHAP values and top risk factors per transaction for a trained model
+``cbp reason``    risk rationale and representment strategy for disputed transactions
+``cbp playbook``  backtest the representment playbook against the synthetic ground truth
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import math
+import os
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +27,9 @@ from chargeback_prediction.features import build_features, render_feature_table
 from chargeback_prediction.modeling import FeatureMatrix, ModelKind, TrainConfig, train_baselines
 from chargeback_prediction.reason_codes import all_reason_codes
 from chargeback_prediction.synthetic import GeneratorConfig, generate, read_dataset, write_dataset
+
+API_KEY_ENV = "CBP_LLM_API_KEY"
+"""Environment variable holding the API key for ``--provider openai-compatible``."""
 
 
 def _utc_date(value: str) -> datetime:
@@ -136,6 +143,62 @@ def _build_parser() -> argparse.ArgumentParser:
         "--out", type=Path, default=Path("artifacts/explain"), help="artifact directory"
     )
     exp.add_argument("--seed", type=int, default=0)
+
+    rsn = sub.add_parser(
+        "reason",
+        help="Write a risk rationale and representment strategy for disputed transactions.",
+        description="Explain each disputed transaction with SHAP, apply the representment "
+        "playbook, and have an LLM write the rationale (validated, with a deterministic "
+        f"fallback). For --provider openai-compatible the API key is read from ${API_KEY_ENV}.",
+    )
+    rsn.add_argument(
+        "--transaction-id",
+        dest="transaction_ids",
+        action="append",
+        required=True,
+        metavar="ID",
+        help="disputed transaction to reason about (repeatable)",
+    )
+    rsn.add_argument(
+        "--reason-code",
+        metavar="NETWORK:CODE",
+        help="e.g. visa:13.2; default: look up each transaction's dispute in --data",
+    )
+    rsn.add_argument(
+        "--data", type=Path, default=Path("data/synthetic"), help="directory of dataset CSVs"
+    )
+    rsn.add_argument(
+        "--features", type=Path, default=Path("data/features.csv"), help="feature table CSV"
+    )
+    rsn.add_argument(
+        "--models", type=Path, default=Path("artifacts/baseline"), help="`cbp train` output dir"
+    )
+    rsn.add_argument(
+        "--model",
+        choices=[k.value for k in ModelKind],
+        default=ModelKind.LOGREG.value,
+        help="which trained model to explain",
+    )
+    rsn.add_argument(
+        "--provider",
+        choices=["mock", "openai-compatible"],
+        default="mock",
+        help="LLM provider (default: deterministic offline mock)",
+    )
+    rsn.add_argument("--llm-base-url", help="e.g. http://localhost:11434/v1")
+    rsn.add_argument("--llm-model", help="model name for the provider")
+    rsn.add_argument("--json", action="store_true", help="print one JSON object per transaction")
+
+    pb = sub.add_parser(
+        "playbook",
+        help="Backtest the representment playbook on every dispute in a synthetic dataset.",
+    )
+    pb.add_argument(
+        "--data", type=Path, default=Path("data/synthetic"), help="directory of dataset CSVs"
+    )
+    pb.add_argument(
+        "--features", type=Path, default=Path("data/features.csv"), help="feature table CSV"
+    )
     return parser
 
 
@@ -277,6 +340,91 @@ def _cmd_explain(args: argparse.Namespace, parser: argparse.ArgumentParser) -> i
     return 0
 
 
+def _cmd_reason(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    from chargeback_prediction.explain import ExplainConfig, load_model
+    from chargeback_prediction.reason_codes import ReasonCode
+    from chargeback_prediction.reasoning import (
+        LLMClient,
+        MockLLM,
+        OpenAICompatibleClient,
+        RiskReasoner,
+        build_contexts,
+        dispute_reason_codes,
+        parse_reason_code,
+    )
+
+    client: LLMClient
+    if args.provider == "mock":
+        client = MockLLM()
+    else:
+        if not args.llm_base_url or not args.llm_model:
+            parser.error("--provider openai-compatible needs --llm-base-url and --llm-model")
+        try:
+            client = OpenAICompatibleClient(
+                args.llm_base_url, args.llm_model, api_key=os.environ.get(API_KEY_ENV)
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+
+    ids: list[str] = list(dict.fromkeys(args.transaction_ids))
+    reasons: dict[str, ReasonCode]
+    try:
+        if args.reason_code:
+            code = parse_reason_code(args.reason_code)
+            reasons = dict.fromkeys(ids, code)
+        else:
+            known = dispute_reason_codes(read_dataset(args.data).disputes)
+            missing = [txn for txn in ids if txn not in known]
+            if missing:
+                parser.error(
+                    f"no dispute on {missing[0]!r} in {args.data}; pass --reason-code to "
+                    "reason about it anyway"
+                )
+            reasons = {txn: known[txn] for txn in ids}
+    except FileNotFoundError as exc:
+        parser.error(f"{exc.filename} not found; run `cbp generate` or pass --reason-code")
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    kind = ModelKind(args.model)
+    try:
+        model = load_model(args.models, kind)
+    except FileNotFoundError as exc:
+        parser.error(f"{exc} not found; run `cbp train` first")
+    try:
+        matrix = FeatureMatrix.read_csv(args.features)
+    except FileNotFoundError:
+        parser.error(f"{args.features} not found; run `cbp features` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        contexts = build_contexts(model, matrix, reasons, ExplainConfig(kind=kind))
+    except KeyError as exc:
+        parser.error(f"unknown transaction id {exc.args[0]!r}")
+
+    rationales = RiskReasoner(client).reason_all(contexts)
+    for i, rationale in enumerate(rationales):
+        if args.json:
+            print(json.dumps(rationale.to_dict(), ensure_ascii=False))
+        else:
+            print(("\n" if i else "") + rationale.render())
+    return 0
+
+
+def _cmd_playbook(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    from chargeback_prediction.reasoning import backtest_playbook, render_backtest
+
+    try:
+        dataset = read_dataset(args.data)
+        matrix = FeatureMatrix.read_csv(args.features)
+    except FileNotFoundError as exc:
+        parser.error(f"{exc.filename} not found; run `cbp generate` and `cbp features` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+    print(render_backtest(backtest_playbook(dataset.disputes, matrix)), end="")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code."""
     parser = _build_parser()
@@ -291,6 +439,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_train(args, parser)
     if args.command == "explain":
         return _cmd_explain(args, parser)
+    if args.command == "reason":
+        return _cmd_reason(args, parser)
+    if args.command == "playbook":
+        return _cmd_playbook(args, parser)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
 
 
