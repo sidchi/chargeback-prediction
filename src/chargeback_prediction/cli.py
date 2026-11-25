@@ -11,14 +11,18 @@ Subcommands, in pipeline order:
 ``cbp playbook``  backtest the representment playbook against the synthetic ground truth
 ``cbp evidence``  assemble representment evidence and a draft response packet per dispute
 ``cbp serve``     run the HTTP scoring service (``/v1/score``, ``/v1/explain``)
+
+``cbp demo`` runs all of the above except ``serve`` on a fresh dataset, narrating each step.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import math
 import os
+import sys
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -305,6 +309,21 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     srv.add_argument(
         "--model", choices=[k.value for k in ModelKind], help="model to serve [CBP_MODEL]"
+    )
+
+    demo = sub.add_parser(
+        "demo",
+        help="Run the whole pipeline end to end on fresh synthetic data, narrating each step.",
+        description="Generate a dataset, build features, train, evaluate, then follow one "
+        "dispute through explain, reason and evidence. Runs in --workdir (default: a temporary "
+        "directory that is deleted afterwards). --record writes an asciinema cast, an animated "
+        "SVG and a transcript of the run.",
+    )
+    demo.add_argument("--workdir", type=Path, help="keep the generated data and artifacts here")
+    demo.add_argument("--customers", type=int, default=defaults.n_customers)
+    demo.add_argument("--seed", type=int, default=defaults.seed)
+    demo.add_argument(
+        "--record", type=Path, metavar="DIR", help="write demo.cast, demo.svg, transcript.txt"
     )
     return parser
 
@@ -666,6 +685,40 @@ def _cmd_serve(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
     return 0
 
 
+def _cmd_demo(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    import tempfile
+
+    from chargeback_prediction.demo import StepRecord, TourConfig, TourError, run_tour
+    from chargeback_prediction.demo.recording import write_recording
+
+    try:
+        config = TourConfig(customers=args.customers, seed=args.seed)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+    def show(step: StepRecord) -> None:
+        print(f"# {step.narration}\n$ {step.command}\n{step.output.rstrip()}\n", flush=True)
+
+    with contextlib.ExitStack() as stack:
+        workdir = args.workdir
+        if workdir is None:
+            workdir = Path(stack.enter_context(tempfile.TemporaryDirectory(prefix="cbp-demo-")))
+        try:
+            tour = run_tour(workdir.resolve(), config, on_step=show)
+        except TourError as exc:
+            print(f"demo stopped: {exc.tour.steps[-1].command} failed", file=sys.stderr)
+            return 1
+        except ValueError as exc:
+            parser.error(str(exc))
+        total = sum(step.seconds for step in tour.steps)
+        print(f"# {len(tour.steps)} steps in {total:.1f}s", end="")
+        print(f"; outputs kept in {args.workdir}/" if args.workdir else "")
+        if args.record:
+            paths = write_recording(tour, args.record)
+            print(f"recorded {', '.join(p.name for p in paths.values())} to {args.record}/")
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code."""
     parser = _build_parser()
@@ -690,6 +743,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_evidence(args, parser)
     if args.command == "serve":
         return _cmd_serve(args, parser)
+    if args.command == "demo":
+        return _cmd_demo(args, parser)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
 
 
