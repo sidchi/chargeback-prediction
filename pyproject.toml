@@ -1,6 +1,6 @@
 [project]
 name = "chargeback-prediction"
-version = "0.1.0"
+version = "1.0.0"
 description = "ML + LLM pipeline that scores card transactions for dispute risk and explains each score (synthetic data only)."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -54,7 +54,7 @@ quote-style = "double"
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 
 [[tool.mypy.overrides]]
 # scikit-learn and joblib ship no type information.

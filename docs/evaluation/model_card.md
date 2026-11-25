@@ -4,7 +4,7 @@
 
 ## Model details
 
-- **Model:** Logistic regression (`logreg`), chargeback-prediction v0.1.0.
+- **Model:** Logistic regression (`logreg`), chargeback-prediction v1.0.0.
 - **Output:** calibrated probability that a card-not-present charge is disputed within the network dispute window; 30 point-in-time features (see [features.md](../features.md)).
 - **Selection:** lowest test-window cost under the expected-cost blocking rule, ahead of gradient boosting.
 - **Explanations:** exact SHAP values per prediction, served by `/v1/explain`.

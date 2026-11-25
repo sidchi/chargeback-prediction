@@ -1,0 +1,79 @@
+# Simulate a subscription merchant: customers, renewals, retries, disputes.
+$ cbp generate --customers 5000 --seed 42
+customers           5000
+subscriptions       3975
+transactions       39693  (36828 approved)
+card updates         993
+disputes             624  (1.69% of approved, 302 friendly fraud)
+  mastercard:4837      144
+  mastercard:4853      122
+  visa:10.4            155
+  visa:13.1             95
+  visa:13.2            108
+
+wrote 5 tables to data/synthetic/
+
+# Point-in-time features: nothing at or after the charge is visible.
+$ cbp features
+rows               36828  (30 features)
+mature labels      28052  (533 disputed, 1.90%)
+observed until  2026-06-24T23:53:08+00:00
+
+wrote data/features.csv
+
+# Baselines on a future test window, with a 120-day label gap.
+$ cbp train
+train    12886 rows    242 disputes
+test      7013 rows    167 disputes  (2.38%)
+
+model                   PR-AUC   lift    Brier     ECE  P@5%
+Logistic regression      0.345  14.5x   0.0179  0.0137  22.5%
+Gradient boosting        0.227   9.5x   0.0201  0.0066  17.7%
+
+wrote artifacts/baseline/report.md, calibration.png, metrics.json and models to artifacts/baseline/
+
+# Price the decisions in dollars, with bootstrap intervals.
+$ cbp evaluate --resamples 200
+test window: 7,013 charges, 167 disputes; approve-all costs $2,455 per 1k charges
+
+model                          PR-AUC [95% CI]       saved/1k [95% CI]  blocked
+Logistic regression       0.345 [0.271, 0.427]       $611 [$357, $824]    1.17%
+Gradient boosting         0.227 [0.169, 0.305]       $273 [$139, $424]    0.47%
+
+recommended: Logistic regression
+wrote artifacts/evaluation/report.md, model_card.md, cost_curve.png, evaluation.json
+
+# A visa:13.2 dispute lands on txn_00005668. What did the model see?
+$ cbp explain --transaction-id txn_00005668
+txn_00005668: dispute risk 92.3% (49.9× a typical transaction at 1.8%). Raised by charged_after_cancel_request = yes (×1,668 odds); prior_approved_renewals = 2 (×1.27 odds). Lowered by email_freemail = no (×0.75 odds).
+
+# Rules pick the strategy; the (mock) LLM writes the case note.
+$ cbp reason --transaction-id txn_00005668
+txn_00005668 · visa:13.2 Cancelled Recurring Transaction
+  strategy:    accept (playbook: accept, confidence: high, llm via mock)
+  rationale:   Filed under visa:13.2 (Cancelled Recurring Transaction). Before the dispute, the model scored this charge at 92.3%, 49.9× a typical transaction. The score was driven by charged_after_cancel_request = yes (×1,668 odds), email_freemail = no (×0.75 odds), prior_approved_renewals = 2 (×1.27 odds). Playbook signals: the customer had already asked to cancel before this charge; established account (279.7 days old) with no IP/issuer country mismatch; 2 approved renewals of this subscription before the charge. Recommended action: accept. The customer asked to cancel before this charge, so the merchant is at fault.
+  key factors: charged_after_cancel_request, email_freemail, prior_approved_renewals, account_age_days
+  evidence:
+    - refund confirmation, or accept the chargeback without a response
+
+# Draft the representment packet from evidence the merchant holds.
+$ cbp evidence --dispute-id dp_0000072 --out packets
+wrote 1 packet(s) to packets/
+
+# The top of the packet: readiness, deadline and rebuttal.
+$ head -15 packets/dp_0000072.md
+# Representment draft — dp_0000072
+
+**Readiness: do not represent**
+
+| | |
+|---|---|
+| Reason code | Visa 13.2 — Cancelled Recurring Transaction |
+| Disputed transaction | `txn_00005668` |
+| Amount | USD 14.99 |
+| Filed | 2025-04-29 |
+| Respond by | 2025-05-19 (check your acquirer's deadline) |
+
+## Rebuttal
+
+Not drafted: an adverse fact applies (see the analyst section). Refund or accept.
