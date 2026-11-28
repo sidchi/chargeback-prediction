@@ -5,6 +5,16 @@ All notable changes to this project are listed here. The format follows
 [Semantic Versioning](https://semver.org/). The public API is the `cbp` command line, the HTTP
 service contract (`/v1/*`) and the documented Python modules.
 
+## [Unreleased]
+
+### Added
+
+- **`cbp monitor`**: production monitoring on two clocks. Score and per-feature PSI against
+  the training window, with a noise floor, are available as soon as traffic arrives. An
+  observed-vs-expected dispute z-test runs on matured labels only. `--fail-on` gives scheduled
+  jobs an exit code. See `docs/monitoring.md` and the generated `docs/monitoring/report.md`.
+- Roadmap Phase 2.
+
 ## [1.0.0] - 2026-11-25
 
 First stable release: a complete, synthetic-data pipeline from raw billing events to a scored,
