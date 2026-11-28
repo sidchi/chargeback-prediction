@@ -11,6 +11,7 @@ Subcommands, in pipeline order:
 ``cbp playbook``  backtest the representment playbook against the synthetic ground truth
 ``cbp evidence``  assemble representment evidence and a draft response packet per dispute
 ``cbp serve``     run the HTTP scoring service (``/v1/score``, ``/v1/explain``)
+``cbp monitor``   score/feature drift and label-delayed calibration after the training date
 
 ``cbp demo`` runs all of the above except ``serve`` on a fresh dataset, narrating each step.
 """
@@ -35,6 +36,7 @@ from chargeback_prediction.explain.factors import DEFAULT_TOP_K
 from chargeback_prediction.explain.run import DEFAULT_BACKGROUND_SIZE
 from chargeback_prediction.features import build_features, render_feature_table
 from chargeback_prediction.modeling import FeatureMatrix, ModelKind, TrainConfig, train_baselines
+from chargeback_prediction.monitoring.monitor import MonitorConfig
 from chargeback_prediction.reason_codes import all_reason_codes
 from chargeback_prediction.representment import DEFAULT_RESPONSE_DAYS
 from chargeback_prediction.synthetic import GeneratorConfig, generate, read_dataset, write_dataset
@@ -309,6 +311,44 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     srv.add_argument(
         "--model", choices=[k.value for k in ModelKind], help="model to serve [CBP_MODEL]"
+    )
+
+    mon_defaults = MonitorConfig()
+    mon = sub.add_parser(
+        "monitor",
+        help="Drift (PSI) and label-delayed calibration checks on traffic after training.",
+        description="Compare traffic that arrived after the model's training date with its "
+        "training window, in fixed windows: score and feature PSI right away, and an "
+        "observed-vs-expected dispute test once labels mature (see docs/monitoring.md).",
+    )
+    mon.add_argument(
+        "--features",
+        type=Path,
+        default=Path("data/features.csv"),
+        help="feature table the model was trained from (its training window is the reference)",
+    )
+    mon.add_argument(
+        "--current",
+        type=Path,
+        help="feature table of the traffic to monitor (default: --features after the cutoff)",
+    )
+    mon.add_argument(
+        "--models", type=Path, default=Path("artifacts/baseline"), help="`cbp train` output dir"
+    )
+    mon.add_argument("--model", choices=[k.value for k in ModelKind], default=ModelKind.LOGREG)
+    mon.add_argument(
+        "--out", type=Path, default=Path("artifacts/monitoring"), help="artifact directory"
+    )
+    mon.add_argument("--window-days", type=int, default=mon_defaults.window_days)
+    mon.add_argument("--psi-warn", type=float, default=mon_defaults.psi_warn)
+    mon.add_argument("--psi-alert", type=float, default=mon_defaults.psi_alert)
+    mon.add_argument("--z-warn", type=float, default=mon_defaults.z_warn)
+    mon.add_argument("--z-alert", type=float, default=mon_defaults.z_alert)
+    mon.add_argument(
+        "--fail-on",
+        choices=["never", "warn", "alert"],
+        default="never",
+        help="exit with status 1 if the overall status reaches this level (for scheduled jobs)",
     )
 
     demo = sub.add_parser(
@@ -685,6 +725,59 @@ def _cmd_serve(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
     return 0
 
 
+def _cmd_monitor(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    from chargeback_prediction.explain import load_model
+    from chargeback_prediction.monitoring import Status, monitor
+    from chargeback_prediction.monitoring.report import write_artifacts
+
+    kind = ModelKind(args.model)
+    try:
+        model = load_model(args.models, kind)
+    except FileNotFoundError as exc:
+        parser.error(f"{exc} not found; run `cbp train` first")
+    try:
+        reference = FeatureMatrix.read_csv(args.features)
+        current = FeatureMatrix.read_csv(args.current) if args.current else None
+    except FileNotFoundError as exc:
+        parser.error(f"{exc.filename} not found; run `cbp features` first")
+    except ValueError as exc:
+        parser.error(str(exc))
+    try:
+        config = MonitorConfig(
+            window_days=args.window_days,
+            psi_warn=args.psi_warn,
+            psi_alert=args.psi_alert,
+            z_warn=args.z_warn,
+            z_alert=args.z_alert,
+        )
+        report = monitor(model, reference, current, config)
+    except ValueError as exc:
+        parser.error(str(exc))
+    paths = write_artifacts(report, kind, args.out)
+
+    print(
+        f"{kind.label}: reference {report.reference_rows:,} training charges, mean score "
+        f"{report.reference_mean_score:.2%}; monitoring from {report.monitored_from:%Y-%m-%d}\n"
+    )
+    print(
+        f"{'window':<12}{'charges':>8}{'mean':>8}{'PSI':>7}{'labels':>8}  {'obs/exp':>11}"
+        f"{'z':>6}  drift   calib"
+    )
+    for w in report.windows:
+        c = w.calibration
+        obs = f"{c.observed}/{c.expected:.1f}" if c else "—"
+        z = f"{c.z:+.1f}" if c else "—"
+        print(
+            f"{w.start:%Y-%m-%d}  {w.rows:>8,}{w.mean_score:>8.2%}{w.score_psi:>7.2f}"
+            f"{w.label_coverage:>8.0%}  {obs:>11}{z:>6}  {w.drift_status.label:<7} "
+            f"{w.calibration_status.label}"
+        )
+    print(f"\nstatus: {report.status.label}. {report.headline()}")
+    print(f"wrote {paths['report']} and {paths['metrics'].name}")
+    threshold = {"never": None, "warn": Status.WARN, "alert": Status.ALERT}[args.fail_on]
+    return 1 if threshold is not None and report.status >= threshold else 0
+
+
 def _cmd_demo(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     import tempfile
 
@@ -743,6 +836,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _cmd_evidence(args, parser)
     if args.command == "serve":
         return _cmd_serve(args, parser)
+    if args.command == "monitor":
+        return _cmd_monitor(args, parser)
     if args.command == "demo":
         return _cmd_demo(args, parser)
     raise AssertionError(f"unhandled command {args.command!r}")  # pragma: no cover
