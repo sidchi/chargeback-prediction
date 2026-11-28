@@ -90,8 +90,10 @@ uv run cbp serve        # 8. the same model over HTTP: /v1/score, /v1/explain, d
    dispute that *is* worth fighting see [dp_0000507](docs/representment/dp_0000507.md).
 
 Also useful: `cbp reason-codes` (the modeled reason codes), `cbp playbook` (backtest the
-representment rules against ground truth) and `cbp evidence` with no id (packet readiness for
-every dispute). Every command takes `--help`.
+representment rules against ground truth), `cbp evidence` with no id (packet readiness for
+every dispute) and `cbp monitor` (score and feature drift after the training date, plus a
+calibration check once dispute labels mature; see [docs/monitoring.md](docs/monitoring.md)).
+Every command takes `--help`.
 
 ## Architecture
 
@@ -140,6 +142,7 @@ invariants the tests enforce, is in [docs/architecture.md](docs/architecture.md)
 | [docs/reasoning.md](docs/reasoning.md) | LLM reasoning layer: guardrails, playbook backtest |
 | [docs/representment.md](docs/representment.md) | evidence assembler: requirements per reason code, readiness |
 | [docs/service.md](docs/service.md) | HTTP API, configuration, design notes |
+| [docs/monitoring.md](docs/monitoring.md), [report](docs/monitoring/report.md) | drift (PSI) and label-delayed calibration monitoring; what it finds on the default data |
 | [CHANGELOG.md](CHANGELOG.md) | what shipped in each release |
 
 The sections below go one level deeper into each stage.
