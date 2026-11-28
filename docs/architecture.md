@@ -118,7 +118,8 @@ These hold across module boundaries, and each has a test that fails if it breaks
 |---|---|
 | Synthetic generator | Event streams from the payment gateway, CRM and dispute feeds from the acquirer |
 | Feature table built in batch | Feature store with the same point-in-time definitions, online and offline |
-| Two baselines, fixed hyper-parameters | Cross-validated tuning, champion/challenger, drift monitoring on score distribution and calibration |
+| Two baselines, fixed hyper-parameters | Cross-validated tuning, champion/challenger |
+| `cbp monitor` batch report ([monitoring.md](monitoring.md)) | The same PSI and calibration checks on a schedule, per segment, with alert routing |
 | Mock LLM by default | Hosted or self-hosted model behind the same `LLMClient` interface, with prompt and reply logging |
 | `attach` items in packets | Connectors to 3DS, AVS/CVV, login logs and signed terms |
 | One container | Service behind the authorization path's latency budget; explain/reason on the async ops path |

@@ -1,0 +1,1637 @@
+{
+  "model": "logreg",
+  "status": "alert",
+  "drift_status": "alert",
+  "calibration_status": "ok",
+  "headline": "The score distribution moved (PSI up to 0.70 in the window from 2025-11-22), driven mostly by subscription_age_days, prior_approved_renewals, prior_subscription_declines. Calibration held in all 3 windows with matured labels, so the probabilities are still usable; re-check volume-based thresholds.",
+  "config": {
+    "window_days": 30,
+    "psi_warn": 0.1,
+    "psi_alert": 0.25,
+    "z_warn": 2.0,
+    "z_alert": 3.0,
+    "min_window_rows": 200,
+    "min_labeled_rows": 500,
+    "n_bins": 10
+  },
+  "reference": {
+    "start": "2025-01-01T00:03:17+00:00",
+    "end": "2025-07-25T18:38:45+00:00",
+    "rows": 12886,
+    "mean_score": 0.018790167087741217,
+    "dispute_rate": 0.018780071395312743
+  },
+  "monitored_from": "2025-11-22T19:00:53+00:00",
+  "windows": [
+    {
+      "start": "2025-11-22T19:00:53+00:00",
+      "end": "2025-12-22T19:00:53+00:00",
+      "rows": 2056,
+      "mean_score": 0.021792130353271624,
+      "score_psi": 0.6992796495381216,
+      "noise_floor": 0.005075864313878483,
+      "label_coverage": 1.0,
+      "status": "alert",
+      "drift_status": "alert",
+      "calibration_status": "ok",
+      "calibration": {
+        "rows": 2056,
+        "observed": 33,
+        "expected": 44.80462000632646,
+        "ratio": 0.7365311879743733,
+        "z": -1.9366805544957175
+      },
+      "features": {
+        "prior_approved_renewals": {
+          "psi": 2.5539522703232156,
+          "reference_mean": 1.449868073878628,
+          "current_mean": 6.567120622568093,
+          "status": "warn"
+        },
+        "subscription_age_days": {
+          "psi": 2.5332513068045124,
+          "reference_mean": 64.86225360856744,
+          "current_mean": 222.76459143968873,
+          "status": "warn"
+        },
+        "prior_subscription_declines": {
+          "psi": 0.355303105294162,
+          "reference_mean": 0.12773552692844947,
+          "current_mean": 0.4474708171206226,
+          "status": "warn"
+        },
+        "is_initial": {
+          "psi": 0.2849764676366465,
+          "reference_mean": 0.2103057581871799,
+          "current_mean": 0.045233463035019454,
+          "status": "warn"
+        },
+        "account_age_days": {
+          "psi": 0.2767697758240093,
+          "reference_mean": 421.14169798714335,
+          "current_mean": 511.38926665408553,
+          "status": "warn"
+        },
+        "days_since_prev_attempt": {
+          "psi": 0.16469990124060757,
+          "reference_mean": 104.18796306487606,
+          "current_mean": 51.50500277285993,
+          "status": "warn"
+        },
+        "is_renewal": {
+          "psi": 0.1275293698805401,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.8535992217898832,
+          "status": "warn"
+        },
+        "ip_missing": {
+          "psi": 0.1275293698805401,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.8535992217898832,
+          "status": "warn"
+        },
+        "plan_is_annual": {
+          "psi": 0.053498006013798435,
+          "reference_mean": 0.04733819649231724,
+          "current_mean": 0.011186770428015564,
+          "status": "ok"
+        },
+        "prior_disputes": {
+          "psi": 0.029906519768406283,
+          "reference_mean": 0.010709296911376688,
+          "current_mean": 0.035505836575875485,
+          "status": "ok"
+        },
+        "amount_usd": {
+          "psi": 0.00751305671000084,
+          "reference_mean": 23.292979202229816,
+          "current_mean": 18.461809338521405,
+          "status": "ok"
+        },
+        "declines_30d": {
+          "psi": 0.006981550480180627,
+          "reference_mean": 0.09002017693620984,
+          "current_mean": 0.11138132295719845,
+          "status": "ok"
+        },
+        "email_disposable": {
+          "psi": 0.004884201048154728,
+          "reference_mean": 0.00426819804438926,
+          "current_mean": 0.0009727626459143969,
+          "status": "ok"
+        },
+        "is_one_off": {
+          "psi": 0.004646565950265121,
+          "reference_mean": 0.08156138444823839,
+          "current_mean": 0.10116731517509728,
+          "status": "ok"
+        },
+        "customer_card_updates_90d": {
+          "psi": 0.0028483391484438966,
+          "reference_mean": 0.004501008846810492,
+          "current_mean": 0.008754863813229572,
+          "status": "ok"
+        },
+        "declines_24h": {
+          "psi": 0.0027700529270331684,
+          "reference_mean": 0.006130684463759119,
+          "current_mean": 0.0009727626459143969,
+          "status": "ok"
+        },
+        "prior_fraud_disputes": {
+          "psi": 0.0025492863926897917,
+          "reference_mean": 0.0031041440322830977,
+          "current_mean": 0.00632295719844358,
+          "status": "ok"
+        },
+        "ip_bin_mismatch": {
+          "psi": 0.0024632912513213156,
+          "reference_mean": 0.01699518857674996,
+          "current_mean": 0.011186770428015564,
+          "status": "ok"
+        },
+        "charged_after_cancel_request": {
+          "psi": 0.0012377144300093567,
+          "reference_mean": 0.0015520720161415489,
+          "current_mean": 0.00048638132295719845,
+          "status": "ok"
+        },
+        "attempt": {
+          "psi": 0.0011849856971927067,
+          "reference_mean": 1.0407418904237156,
+          "current_mean": 1.0476653696498055,
+          "status": "ok"
+        },
+        "attempts_24h": {
+          "psi": 0.0011259269259317531,
+          "reference_mean": 0.012882197733974856,
+          "current_mean": 0.005836575875486381,
+          "status": "ok"
+        },
+        "attempts_7d": {
+          "psi": 0.0006741806073054644,
+          "reference_mean": 0.08280304206115163,
+          "current_mean": 0.08414396887159534,
+          "status": "ok"
+        },
+        "is_mastercard": {
+          "psi": 0.000333937977416446,
+          "reference_mean": 0.37730870712401055,
+          "current_mean": 0.3861867704280156,
+          "status": "ok"
+        },
+        "billing_bin_mismatch": {
+          "psi": 0.00029604434638807027,
+          "reference_mean": 0.017150395778364115,
+          "current_mean": 0.019455252918287938,
+          "status": "ok"
+        },
+        "au_updates_90d": {
+          "psi": 0.00018672734701505382,
+          "reference_mean": 0.025453981064721402,
+          "current_mean": 0.023346303501945526,
+          "status": "ok"
+        },
+        "approved_usd_24h": {
+          "psi": 0.00014675481095720544,
+          "reference_mean": 0.3585185472605929,
+          "current_mean": 0.1684387159533074,
+          "status": "ok"
+        },
+        "attempts_1h": {
+          "psi": 9.096139618515857e-05,
+          "reference_mean": 0.0009312432096849294,
+          "current_mean": 0.0009727626459143969,
+          "status": "ok"
+        },
+        "email_freemail": {
+          "psi": 2.5559744277038353e-05,
+          "reference_mean": 0.8478969424181282,
+          "current_mean": 0.8497081712062257,
+          "status": "ok"
+        },
+        "days_since_card_update": {
+          "psi": 0.0,
+          "reference_mean": 352.88522019626,
+          "current_mean": 344.34063586089496,
+          "status": "ok"
+        },
+        "days_since_last_dispute": {
+          "psi": 0.0,
+          "reference_mean": 361.9193182584665,
+          "current_mean": 356.9672444552529,
+          "status": "ok"
+        }
+      },
+      "reasons": [
+        "score PSI 0.70",
+        "feature drift: prior_approved_renewals, subscription_age_days, prior_subscription_declines +5 more"
+      ]
+    },
+    {
+      "start": "2025-12-22T19:00:53+00:00",
+      "end": "2026-01-21T19:00:53+00:00",
+      "rows": 2271,
+      "mean_score": 0.03339048842400014,
+      "score_psi": 0.6097650766735574,
+      "noise_floor": 0.004661444296299363,
+      "label_coverage": 1.0,
+      "status": "alert",
+      "drift_status": "alert",
+      "calibration_status": "ok",
+      "calibration": {
+        "rows": 2271,
+        "observed": 72,
+        "expected": 75.82979921090433,
+        "ratio": 0.9494947995279196,
+        "z": -0.57842667092414
+      },
+      "features": {
+        "subscription_age_days": {
+          "psi": 2.6484536117286908,
+          "reference_mean": 64.86225360856744,
+          "current_mean": 247.04799647732276,
+          "status": "warn"
+        },
+        "prior_approved_renewals": {
+          "psi": 2.263614514726215,
+          "reference_mean": 1.449868073878628,
+          "current_mean": 6.49185380889476,
+          "status": "warn"
+        },
+        "prior_subscription_declines": {
+          "psi": 0.35189828174271476,
+          "reference_mean": 0.12773552692844947,
+          "current_mean": 0.45398502862175255,
+          "status": "warn"
+        },
+        "account_age_days": {
+          "psi": 0.31604267486824483,
+          "reference_mean": 421.14169798714335,
+          "current_mean": 533.4852770612946,
+          "status": "warn"
+        },
+        "is_initial": {
+          "psi": 0.3154378452052748,
+          "reference_mean": 0.2103057581871799,
+          "current_mean": 0.04007045354469397,
+          "status": "warn"
+        },
+        "is_renewal": {
+          "psi": 0.13437087589662614,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.8568912373403786,
+          "status": "warn"
+        },
+        "ip_missing": {
+          "psi": 0.13437087589662614,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.8568912373403786,
+          "status": "warn"
+        },
+        "days_since_prev_attempt": {
+          "psi": 0.048117952773111025,
+          "reference_mean": 104.18796306487606,
+          "current_mean": 70.23504352489653,
+          "status": "ok"
+        },
+        "prior_disputes": {
+          "psi": 0.03602899740416181,
+          "reference_mean": 0.010709296911376688,
+          "current_mean": 0.04095112285336856,
+          "status": "ok"
+        },
+        "amount_usd": {
+          "psi": 0.029406869091883163,
+          "reference_mean": 23.292979202229816,
+          "current_mean": 29.455645090268607,
+          "status": "ok"
+        },
+        "plan_is_annual": {
+          "psi": 0.026549156175600275,
+          "reference_mean": 0.04733819649231724,
+          "current_mean": 0.08762659621312198,
+          "status": "ok"
+        },
+        "charged_after_cancel_request": {
+          "psi": 0.01861548012428529,
+          "reference_mean": 0.0015520720161415489,
+          "current_mean": 0.011008366358432409,
+          "status": "ok"
+        },
+        "declines_30d": {
+          "psi": 0.010508955040948021,
+          "reference_mean": 0.09002017693620984,
+          "current_mean": 0.12769704975781593,
+          "status": "ok"
+        },
+        "customer_card_updates_90d": {
+          "psi": 0.007950307978428738,
+          "reference_mean": 0.004501008846810492,
+          "current_mean": 0.012329370321444297,
+          "status": "ok"
+        },
+        "attempt": {
+          "psi": 0.006880101969118521,
+          "reference_mean": 1.0407418904237156,
+          "current_mean": 1.0603258476442097,
+          "status": "ok"
+        },
+        "attempts_7d": {
+          "psi": 0.006360108268970336,
+          "reference_mean": 0.08280304206115163,
+          "current_mean": 0.11140466754733598,
+          "status": "ok"
+        },
+        "is_one_off": {
+          "psi": 0.005528307530478666,
+          "reference_mean": 0.08156138444823839,
+          "current_mean": 0.10303830911492734,
+          "status": "ok"
+        },
+        "prior_fraud_disputes": {
+          "psi": 0.0023995670953071827,
+          "reference_mean": 0.0031041440322830977,
+          "current_mean": 0.007045354469396741,
+          "status": "ok"
+        },
+        "au_updates_90d": {
+          "psi": 0.0020305351937978736,
+          "reference_mean": 0.025453981064721402,
+          "current_mean": 0.03302509907529723,
+          "status": "ok"
+        },
+        "email_freemail": {
+          "psi": 0.0010846028763133926,
+          "reference_mean": 0.8478969424181282,
+          "current_mean": 0.8595332452664025,
+          "status": "ok"
+        },
+        "billing_bin_mismatch": {
+          "psi": 0.0005264961303426735,
+          "reference_mean": 0.017150395778364115,
+          "current_mean": 0.02025539409951563,
+          "status": "ok"
+        },
+        "declines_24h": {
+          "psi": 0.00041605993522014046,
+          "reference_mean": 0.006130684463759119,
+          "current_mean": 0.007485689123734038,
+          "status": "ok"
+        },
+        "is_mastercard": {
+          "psi": 0.00040220565149619617,
+          "reference_mean": 0.37730870712401055,
+          "current_mean": 0.3870541611624835,
+          "status": "ok"
+        },
+        "ip_bin_mismatch": {
+          "psi": 0.00015741654257374544,
+          "reference_mean": 0.01699518857674996,
+          "current_mean": 0.015411712901805373,
+          "status": "ok"
+        },
+        "approved_usd_24h": {
+          "psi": 0.00012139693642603157,
+          "reference_mean": 0.3585185472605929,
+          "current_mean": 0.7522853368560106,
+          "status": "ok"
+        },
+        "attempts_1h": {
+          "psi": 4.228373058006016e-05,
+          "reference_mean": 0.0009312432096849294,
+          "current_mean": 0.0008806693086745927,
+          "status": "ok"
+        },
+        "email_disposable": {
+          "psi": 2.2734497073854143e-05,
+          "reference_mean": 0.00426819804438926,
+          "current_mean": 0.003963011889035667,
+          "status": "ok"
+        },
+        "attempts_24h": {
+          "psi": 2.640813272586116e-06,
+          "reference_mean": 0.012882197733974856,
+          "current_mean": 0.016292382210479964,
+          "status": "ok"
+        },
+        "days_since_card_update": {
+          "psi": 0.0,
+          "reference_mean": 352.88522019626,
+          "current_mean": 339.95807690444735,
+          "status": "ok"
+        },
+        "days_since_last_dispute": {
+          "psi": 0.0,
+          "reference_mean": 361.9193182584665,
+          "current_mean": 356.64550125495373,
+          "status": "ok"
+        }
+      },
+      "reasons": [
+        "score PSI 0.61",
+        "feature drift: subscription_age_days, prior_approved_renewals, prior_subscription_declines +4 more"
+      ]
+    },
+    {
+      "start": "2026-01-21T19:00:53+00:00",
+      "end": "2026-02-20T19:00:53+00:00",
+      "rows": 2365,
+      "mean_score": 0.02701170994206426,
+      "score_psi": 0.6144605139934973,
+      "noise_floor": 0.0045039292360163396,
+      "label_coverage": 1.0,
+      "status": "alert",
+      "drift_status": "alert",
+      "calibration_status": "ok",
+      "calibration": {
+        "rows": 2365,
+        "observed": 58,
+        "expected": 63.88269401298197,
+        "ratio": 0.9079141212831989,
+        "z": -0.8653972541623055
+      },
+      "features": {
+        "subscription_age_days": {
+          "psi": 2.603860868786832,
+          "reference_mean": 64.86225360856744,
+          "current_mean": 256.17420718816066,
+          "status": "warn"
+        },
+        "prior_approved_renewals": {
+          "psi": 2.187415143967072,
+          "reference_mean": 1.449868073878628,
+          "current_mean": 6.762367864693446,
+          "status": "warn"
+        },
+        "prior_subscription_declines": {
+          "psi": 0.36570915645034424,
+          "reference_mean": 0.12773552692844947,
+          "current_mean": 0.4697674418604651,
+          "status": "warn"
+        },
+        "account_age_days": {
+          "psi": 0.35300548697631584,
+          "reference_mean": 421.14169798714335,
+          "current_mean": 543.9728813601691,
+          "status": "warn"
+        },
+        "is_initial": {
+          "psi": 0.3428014128825976,
+          "reference_mean": 0.2103057581871799,
+          "current_mean": 0.035940803382663845,
+          "status": "warn"
+        },
+        "is_renewal": {
+          "psi": 0.08859135916024727,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.8321353065539112,
+          "status": "ok"
+        },
+        "ip_missing": {
+          "psi": 0.08859135916024727,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.8321353065539112,
+          "status": "ok"
+        },
+        "amount_usd": {
+          "psi": 0.050273372681569624,
+          "reference_mean": 23.292979202229816,
+          "current_mean": 30.36709936575053,
+          "status": "ok"
+        },
+        "days_since_prev_attempt": {
+          "psi": 0.041030092524268674,
+          "reference_mean": 104.18796306487606,
+          "current_mean": 72.08414485721353,
+          "status": "ok"
+        },
+        "prior_disputes": {
+          "psi": 0.03743025141859302,
+          "reference_mean": 0.010709296911376688,
+          "current_mean": 0.04312896405919662,
+          "status": "ok"
+        },
+        "plan_is_annual": {
+          "psi": 0.030991951847001733,
+          "reference_mean": 0.04733819649231724,
+          "current_mean": 0.09133192389006342,
+          "status": "ok"
+        },
+        "is_one_off": {
+          "psi": 0.027058007644101736,
+          "reference_mean": 0.08156138444823839,
+          "current_mean": 0.13192389006342495,
+          "status": "ok"
+        },
+        "declines_30d": {
+          "psi": 0.009120847313276528,
+          "reference_mean": 0.09002017693620984,
+          "current_mean": 0.12177589852008457,
+          "status": "ok"
+        },
+        "customer_card_updates_90d": {
+          "psi": 0.007151361705739907,
+          "reference_mean": 0.004501008846810492,
+          "current_mean": 0.011839323467230444,
+          "status": "ok"
+        },
+        "prior_fraud_disputes": {
+          "psi": 0.0060366232267948135,
+          "reference_mean": 0.0031041440322830977,
+          "current_mean": 0.011839323467230444,
+          "status": "ok"
+        },
+        "attempts_7d": {
+          "psi": 0.0051960949398446275,
+          "reference_mean": 0.08280304206115163,
+          "current_mean": 0.10317124735729387,
+          "status": "ok"
+        },
+        "ip_bin_mismatch": {
+          "psi": 0.003092346100992859,
+          "reference_mean": 0.01699518857674996,
+          "current_mean": 0.010570824524312896,
+          "status": "ok"
+        },
+        "is_mastercard": {
+          "psi": 0.00171173378304121,
+          "reference_mean": 0.37730870712401055,
+          "current_mean": 0.3974630021141649,
+          "status": "ok"
+        },
+        "attempt": {
+          "psi": 0.0013095694879446899,
+          "reference_mean": 1.0407418904237156,
+          "current_mean": 1.0503171247357295,
+          "status": "ok"
+        },
+        "billing_bin_mismatch": {
+          "psi": 0.0010308109061553414,
+          "reference_mean": 0.017150395778364115,
+          "current_mean": 0.02156448202959831,
+          "status": "ok"
+        },
+        "approved_usd_24h": {
+          "psi": 0.000774513793417469,
+          "reference_mean": 0.3585185472605929,
+          "current_mean": 0.5353361522198732,
+          "status": "ok"
+        },
+        "au_updates_90d": {
+          "psi": 0.0006604668531768183,
+          "reference_mean": 0.025453981064721402,
+          "current_mean": 0.02156448202959831,
+          "status": "ok"
+        },
+        "charged_after_cancel_request": {
+          "psi": 0.00048495540461375,
+          "reference_mean": 0.0015520720161415489,
+          "current_mean": 0.002536997885835095,
+          "status": "ok"
+        },
+        "attempts_1h": {
+          "psi": 0.0003405131508679517,
+          "reference_mean": 0.0009312432096849294,
+          "current_mean": 0.0016913319238900633,
+          "status": "ok"
+        },
+        "attempts_24h": {
+          "psi": 0.00031124917459118134,
+          "reference_mean": 0.012882197733974856,
+          "current_mean": 0.015644820295983086,
+          "status": "ok"
+        },
+        "email_disposable": {
+          "psi": 3.3053762560333506e-05,
+          "reference_mean": 0.00426819804438926,
+          "current_mean": 0.004651162790697674,
+          "status": "ok"
+        },
+        "email_freemail": {
+          "psi": 3.1098445269709754e-05,
+          "reference_mean": 0.8478969424181282,
+          "current_mean": 0.8498942917547568,
+          "status": "ok"
+        },
+        "declines_24h": {
+          "psi": 4.5945140116955495e-06,
+          "reference_mean": 0.006130684463759119,
+          "current_mean": 0.006765327695560253,
+          "status": "ok"
+        },
+        "days_since_card_update": {
+          "psi": 0.0,
+          "reference_mean": 352.88522019626,
+          "current_mean": 343.42303023805493,
+          "status": "ok"
+        },
+        "days_since_last_dispute": {
+          "psi": 0.0,
+          "reference_mean": 361.9193182584665,
+          "current_mean": 356.9311102295983,
+          "status": "ok"
+        }
+      },
+      "reasons": [
+        "score PSI 0.61",
+        "feature drift: subscription_age_days, prior_approved_renewals, prior_subscription_declines +2 more"
+      ]
+    },
+    {
+      "start": "2026-02-20T19:00:53+00:00",
+      "end": "2026-03-22T19:00:53+00:00",
+      "rows": 2209,
+      "mean_score": 0.03154252756997694,
+      "score_psi": 0.5679168976986863,
+      "noise_floor": 0.004772674145606838,
+      "label_coverage": 0.1453146220009054,
+      "status": "alert",
+      "drift_status": "alert",
+      "calibration_status": "pending",
+      "calibration": null,
+      "features": {
+        "subscription_age_days": {
+          "psi": 2.536640493982296,
+          "reference_mean": 64.86225360856744,
+          "current_mean": 267.42191036668174,
+          "status": "warn"
+        },
+        "prior_approved_renewals": {
+          "psi": 2.3866816332533607,
+          "reference_mean": 1.449868073878628,
+          "current_mean": 7.756450882752377,
+          "status": "warn"
+        },
+        "prior_subscription_declines": {
+          "psi": 0.47660368618884463,
+          "reference_mean": 0.12773552692844947,
+          "current_mean": 0.5373472159348122,
+          "status": "warn"
+        },
+        "account_age_days": {
+          "psi": 0.3474151959831205,
+          "reference_mean": 421.14169798714335,
+          "current_mean": 533.6225774065188,
+          "status": "warn"
+        },
+        "is_initial": {
+          "psi": 0.28984912331427937,
+          "reference_mean": 0.2103057581871799,
+          "current_mean": 0.04436396559529199,
+          "status": "warn"
+        },
+        "days_since_prev_attempt": {
+          "psi": 0.10103209369874487,
+          "reference_mean": 104.18796306487606,
+          "current_mean": 58.21374419200091,
+          "status": "warn"
+        },
+        "is_renewal": {
+          "psi": 0.08347633603865073,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.828881846989588,
+          "status": "ok"
+        },
+        "ip_missing": {
+          "psi": 0.08347633603865073,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.828881846989588,
+          "status": "ok"
+        },
+        "prior_disputes": {
+          "psi": 0.03724201062501448,
+          "reference_mean": 0.010709296911376688,
+          "current_mean": 0.04481665912177456,
+          "status": "ok"
+        },
+        "is_one_off": {
+          "psi": 0.02220556243357117,
+          "reference_mean": 0.08156138444823839,
+          "current_mean": 0.12675418741511996,
+          "status": "ok"
+        },
+        "declines_30d": {
+          "psi": 0.013250076970907796,
+          "reference_mean": 0.09002017693620984,
+          "current_mean": 0.14622000905387053,
+          "status": "ok"
+        },
+        "attempts_7d": {
+          "psi": 0.010522362003700141,
+          "reference_mean": 0.08280304206115163,
+          "current_mean": 0.13988229968311452,
+          "status": "ok"
+        },
+        "prior_fraud_disputes": {
+          "psi": 0.008850663036386944,
+          "reference_mean": 0.0031041440322830977,
+          "current_mean": 0.015391579900407425,
+          "status": "ok"
+        },
+        "customer_card_updates_90d": {
+          "psi": 0.007774086978114765,
+          "reference_mean": 0.004501008846810492,
+          "current_mean": 0.012222725215029425,
+          "status": "ok"
+        },
+        "amount_usd": {
+          "psi": 0.006294469502805407,
+          "reference_mean": 23.292979202229816,
+          "current_mean": 22.917863286555,
+          "status": "ok"
+        },
+        "attempt": {
+          "psi": 0.0026498827585565068,
+          "reference_mean": 1.0407418904237156,
+          "current_mean": 1.0520597555454958,
+          "status": "ok"
+        },
+        "email_disposable": {
+          "psi": 0.0020323217521793896,
+          "reference_mean": 0.00426819804438926,
+          "current_mean": 0.007695789950203712,
+          "status": "ok"
+        },
+        "approved_usd_24h": {
+          "psi": 0.0015185333966701864,
+          "reference_mean": 0.3585185472605929,
+          "current_mean": 0.47782707107288364,
+          "status": "ok"
+        },
+        "attempts_24h": {
+          "psi": 0.0014095778850501078,
+          "reference_mean": 0.012882197733974856,
+          "current_mean": 0.022634676324128564,
+          "status": "ok"
+        },
+        "is_mastercard": {
+          "psi": 0.001283337492647622,
+          "reference_mean": 0.37730870712401055,
+          "current_mean": 0.39474875509280216,
+          "status": "ok"
+        },
+        "plan_is_annual": {
+          "psi": 0.0010351905758040417,
+          "reference_mean": 0.04733819649231724,
+          "current_mean": 0.040742417383431415,
+          "status": "ok"
+        },
+        "declines_24h": {
+          "psi": 0.0007320719844146683,
+          "reference_mean": 0.006130684463759119,
+          "current_mean": 0.013128112267994568,
+          "status": "ok"
+        },
+        "ip_bin_mismatch": {
+          "psi": 0.0002305583748415049,
+          "reference_mean": 0.01699518857674996,
+          "current_mean": 0.019013128112267994,
+          "status": "ok"
+        },
+        "billing_bin_mismatch": {
+          "psi": 0.00019559709848367707,
+          "reference_mean": 0.017150395778364115,
+          "current_mean": 0.019013128112267994,
+          "status": "ok"
+        },
+        "email_freemail": {
+          "psi": 0.00019473887872692027,
+          "reference_mean": 0.8478969424181282,
+          "current_mean": 0.8528746038931643,
+          "status": "ok"
+        },
+        "attempts_1h": {
+          "psi": 5.3752588871172714e-05,
+          "reference_mean": 0.0009312432096849294,
+          "current_mean": 0.0009053870529651426,
+          "status": "ok"
+        },
+        "charged_after_cancel_request": {
+          "psi": 3.994948856430813e-05,
+          "reference_mean": 0.0015520720161415489,
+          "current_mean": 0.0018107741059302852,
+          "status": "ok"
+        },
+        "au_updates_90d": {
+          "psi": 4.2971919736701436e-07,
+          "reference_mean": 0.025453981064721402,
+          "current_mean": 0.025350837483023993,
+          "status": "ok"
+        },
+        "days_since_card_update": {
+          "psi": 0.0,
+          "reference_mean": 352.88522019626,
+          "current_mean": 342.5157064947941,
+          "status": "ok"
+        },
+        "days_since_last_dispute": {
+          "psi": 0.0,
+          "reference_mean": 361.9193182584665,
+          "current_mean": 357.6027409687641,
+          "status": "ok"
+        }
+      },
+      "reasons": [
+        "score PSI 0.57",
+        "feature drift: subscription_age_days, prior_approved_renewals, prior_subscription_declines +3 more"
+      ]
+    },
+    {
+      "start": "2026-03-22T19:00:53+00:00",
+      "end": "2026-04-21T19:00:53+00:00",
+      "rows": 2158,
+      "mean_score": 0.027140448634357058,
+      "score_psi": 0.5627562175873427,
+      "noise_floor": 0.004868960674177507,
+      "label_coverage": 0.0,
+      "status": "alert",
+      "drift_status": "alert",
+      "calibration_status": "pending",
+      "calibration": null,
+      "features": {
+        "subscription_age_days": {
+          "psi": 2.5263310335277906,
+          "reference_mean": 64.86225360856744,
+          "current_mean": 282.43697868396663,
+          "status": "warn"
+        },
+        "prior_approved_renewals": {
+          "psi": 2.4965328144352115,
+          "reference_mean": 1.449868073878628,
+          "current_mean": 8.475440222428174,
+          "status": "warn"
+        },
+        "prior_subscription_declines": {
+          "psi": 0.5570145018695922,
+          "reference_mean": 0.12773552692844947,
+          "current_mean": 0.5866543095458758,
+          "status": "warn"
+        },
+        "is_initial": {
+          "psi": 0.4071786857971628,
+          "reference_mean": 0.2103057581871799,
+          "current_mean": 0.027803521779425393,
+          "status": "warn"
+        },
+        "account_age_days": {
+          "psi": 0.3725669605606529,
+          "reference_mean": 421.14169798714335,
+          "current_mean": 547.0786239854959,
+          "status": "warn"
+        },
+        "days_since_prev_attempt": {
+          "psi": 0.13517067611547198,
+          "reference_mean": 104.18796306487606,
+          "current_mean": 51.09833356496757,
+          "status": "warn"
+        },
+        "is_renewal": {
+          "psi": 0.08511111991524861,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.829935125115848,
+          "status": "ok"
+        },
+        "ip_missing": {
+          "psi": 0.08511111991524861,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.829935125115848,
+          "status": "ok"
+        },
+        "prior_disputes": {
+          "psi": 0.054921340347152,
+          "reference_mean": 0.010709296911376688,
+          "current_mean": 0.05885078776645042,
+          "status": "ok"
+        },
+        "is_one_off": {
+          "psi": 0.037918395495509336,
+          "reference_mean": 0.08156138444823839,
+          "current_mean": 0.1422613531047266,
+          "status": "ok"
+        },
+        "plan_is_annual": {
+          "psi": 0.034333959855289344,
+          "reference_mean": 0.04733819649231724,
+          "current_mean": 0.016218721037998145,
+          "status": "ok"
+        },
+        "prior_fraud_disputes": {
+          "psi": 0.01657162538570359,
+          "reference_mean": 0.0031041440322830977,
+          "current_mean": 0.021779425393883226,
+          "status": "ok"
+        },
+        "declines_30d": {
+          "psi": 0.010862393438743994,
+          "reference_mean": 0.09002017693620984,
+          "current_mean": 0.11816496756255793,
+          "status": "ok"
+        },
+        "customer_card_updates_90d": {
+          "psi": 0.007488491761709408,
+          "reference_mean": 0.004501008846810492,
+          "current_mean": 0.012048192771084338,
+          "status": "ok"
+        },
+        "attempts_7d": {
+          "psi": 0.006268469694493031,
+          "reference_mean": 0.08280304206115163,
+          "current_mean": 0.0968489341983318,
+          "status": "ok"
+        },
+        "amount_usd": {
+          "psi": 0.005734366916733804,
+          "reference_mean": 23.292979202229816,
+          "current_mean": 20.092766450417052,
+          "status": "ok"
+        },
+        "attempt": {
+          "psi": 0.004816941424586808,
+          "reference_mean": 1.0407418904237156,
+          "current_mean": 1.0569972196478221,
+          "status": "ok"
+        },
+        "attempts_1h": {
+          "psi": 0.001163591603925021,
+          "reference_mean": 0.0009312432096849294,
+          "current_mean": 0.0,
+          "status": "ok"
+        },
+        "is_mastercard": {
+          "psi": 0.0011595863684830488,
+          "reference_mean": 0.37730870712401055,
+          "current_mean": 0.3938832252085264,
+          "status": "ok"
+        },
+        "billing_bin_mismatch": {
+          "psi": 0.000923461920012119,
+          "reference_mean": 0.017150395778364115,
+          "current_mean": 0.021316033364226137,
+          "status": "ok"
+        },
+        "au_updates_90d": {
+          "psi": 0.0007516568137775731,
+          "reference_mean": 0.025453981064721402,
+          "current_mean": 0.021316033364226137,
+          "status": "ok"
+        },
+        "charged_after_cancel_request": {
+          "psi": 0.00032280589132259273,
+          "reference_mean": 0.0015520720161415489,
+          "current_mean": 0.0009267840593141798,
+          "status": "ok"
+        },
+        "declines_24h": {
+          "psi": 0.0003225023896226781,
+          "reference_mean": 0.006130684463759119,
+          "current_mean": 0.004170528266913809,
+          "status": "ok"
+        },
+        "ip_bin_mismatch": {
+          "psi": 0.00030024896825368554,
+          "reference_mean": 0.01699518857674996,
+          "current_mean": 0.014828544949026877,
+          "status": "ok"
+        },
+        "approved_usd_24h": {
+          "psi": 0.000232171152285872,
+          "reference_mean": 0.3585185472605929,
+          "current_mean": 0.321663577386469,
+          "status": "ok"
+        },
+        "email_freemail": {
+          "psi": 0.00011417900619921334,
+          "reference_mean": 0.8478969424181282,
+          "current_mean": 0.8517145505097312,
+          "status": "ok"
+        },
+        "email_disposable": {
+          "psi": 3.0200922649028436e-05,
+          "reference_mean": 0.00426819804438926,
+          "current_mean": 0.004633920296570899,
+          "status": "ok"
+        },
+        "attempts_24h": {
+          "psi": 8.976867168297154e-06,
+          "reference_mean": 0.012882197733974856,
+          "current_mean": 0.011121408711770158,
+          "status": "ok"
+        },
+        "days_since_card_update": {
+          "psi": 0.0,
+          "reference_mean": 352.88522019626,
+          "current_mean": 343.35739891983314,
+          "status": "ok"
+        },
+        "days_since_last_dispute": {
+          "psi": 0.0,
+          "reference_mean": 361.9193182584665,
+          "current_mean": 356.2393049986098,
+          "status": "ok"
+        }
+      },
+      "reasons": [
+        "score PSI 0.56",
+        "feature drift: subscription_age_days, prior_approved_renewals, prior_subscription_declines +3 more"
+      ]
+    },
+    {
+      "start": "2026-04-21T19:00:53+00:00",
+      "end": "2026-05-21T19:00:53+00:00",
+      "rows": 2196,
+      "mean_score": 0.029808747309103642,
+      "score_psi": 0.5674648264641342,
+      "noise_floor": 0.004796793063001402,
+      "label_coverage": 0.0,
+      "status": "alert",
+      "drift_status": "alert",
+      "calibration_status": "pending",
+      "calibration": null,
+      "features": {
+        "subscription_age_days": {
+          "psi": 2.519107803308822,
+          "reference_mean": 64.86225360856744,
+          "current_mean": 289.16985428051004,
+          "status": "warn"
+        },
+        "prior_approved_renewals": {
+          "psi": 2.403886937505387,
+          "reference_mean": 1.449868073878628,
+          "current_mean": 8.734972677595628,
+          "status": "warn"
+        },
+        "prior_subscription_declines": {
+          "psi": 0.5544941705966151,
+          "reference_mean": 0.12773552692844947,
+          "current_mean": 0.5983606557377049,
+          "status": "warn"
+        },
+        "account_age_days": {
+          "psi": 0.431521261648373,
+          "reference_mean": 421.14169798714335,
+          "current_mean": 551.7574010131603,
+          "status": "warn"
+        },
+        "is_initial": {
+          "psi": 0.27346302411816603,
+          "reference_mean": 0.2103057581871799,
+          "current_mean": 0.04735883424408015,
+          "status": "warn"
+        },
+        "days_since_prev_attempt": {
+          "psi": 0.11887063773130202,
+          "reference_mean": 104.18796306487606,
+          "current_mean": 54.31375751892532,
+          "status": "warn"
+        },
+        "prior_disputes": {
+          "psi": 0.061860148446995375,
+          "reference_mean": 0.010709296911376688,
+          "current_mean": 0.058287795992714025,
+          "status": "ok"
+        },
+        "is_one_off": {
+          "psi": 0.053050565568348126,
+          "reference_mean": 0.08156138444823839,
+          "current_mean": 0.15482695810564662,
+          "status": "ok"
+        },
+        "is_renewal": {
+          "psi": 0.043612673648794315,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.7978142076502732,
+          "status": "ok"
+        },
+        "ip_missing": {
+          "psi": 0.043612673648794315,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.7978142076502732,
+          "status": "ok"
+        },
+        "plan_is_annual": {
+          "psi": 0.02869188707717313,
+          "reference_mean": 0.04733819649231724,
+          "current_mean": 0.018214936247723135,
+          "status": "ok"
+        },
+        "prior_fraud_disputes": {
+          "psi": 0.02409766029836549,
+          "reference_mean": 0.0031041440322830977,
+          "current_mean": 0.02185792349726776,
+          "status": "ok"
+        },
+        "customer_card_updates_90d": {
+          "psi": 0.01368882738605273,
+          "reference_mean": 0.004501008846810492,
+          "current_mean": 0.015482695810564663,
+          "status": "ok"
+        },
+        "attempts_7d": {
+          "psi": 0.00841590659472697,
+          "reference_mean": 0.08280304206115163,
+          "current_mean": 0.11429872495446267,
+          "status": "ok"
+        },
+        "amount_usd": {
+          "psi": 0.006645035797390193,
+          "reference_mean": 23.292979202229816,
+          "current_mean": 21.03553278688525,
+          "status": "ok"
+        },
+        "declines_30d": {
+          "psi": 0.005265281016159163,
+          "reference_mean": 0.09002017693620984,
+          "current_mean": 0.11839708561020036,
+          "status": "ok"
+        },
+        "ip_bin_mismatch": {
+          "psi": 0.002280158865095366,
+          "reference_mean": 0.01699518857674996,
+          "current_mean": 0.011384335154826957,
+          "status": "ok"
+        },
+        "is_mastercard": {
+          "psi": 0.0015008076481200102,
+          "reference_mean": 0.37730870712401055,
+          "current_mean": 0.39617486338797814,
+          "status": "ok"
+        },
+        "au_updates_90d": {
+          "psi": 0.0012932304495502363,
+          "reference_mean": 0.025453981064721402,
+          "current_mean": 0.031420765027322405,
+          "status": "ok"
+        },
+        "declines_24h": {
+          "psi": 0.0008387208199044575,
+          "reference_mean": 0.006130684463759119,
+          "current_mean": 0.00546448087431694,
+          "status": "ok"
+        },
+        "billing_bin_mismatch": {
+          "psi": 0.00077398569558215,
+          "reference_mean": 0.017150395778364115,
+          "current_mean": 0.020947176684881604,
+          "status": "ok"
+        },
+        "email_disposable": {
+          "psi": 0.0006875117385131985,
+          "reference_mean": 0.00426819804438926,
+          "current_mean": 0.00273224043715847,
+          "status": "ok"
+        },
+        "approved_usd_24h": {
+          "psi": 0.00036974725865779096,
+          "reference_mean": 0.3585185472605929,
+          "current_mean": 0.29739071038251363,
+          "status": "ok"
+        },
+        "charged_after_cancel_request": {
+          "psi": 0.0003422901924867552,
+          "reference_mean": 0.0015520720161415489,
+          "current_mean": 0.0009107468123861566,
+          "status": "ok"
+        },
+        "attempt": {
+          "psi": 0.0002471165874028559,
+          "reference_mean": 1.0407418904237156,
+          "current_mean": 1.0450819672131149,
+          "status": "ok"
+        },
+        "attempts_1h": {
+          "psi": 0.00010402046577123577,
+          "reference_mean": 0.0009312432096849294,
+          "current_mean": 0.001366120218579235,
+          "status": "ok"
+        },
+        "email_freemail": {
+          "psi": 7.770417277025126e-05,
+          "reference_mean": 0.8478969424181282,
+          "current_mean": 0.8447176684881603,
+          "status": "ok"
+        },
+        "attempts_24h": {
+          "psi": 4.0772771676293424e-05,
+          "reference_mean": 0.012882197733974856,
+          "current_mean": 0.013205828779599272,
+          "status": "ok"
+        },
+        "days_since_card_update": {
+          "psi": 0.0,
+          "reference_mean": 352.88522019626,
+          "current_mean": 339.6706742254098,
+          "status": "ok"
+        },
+        "days_since_last_dispute": {
+          "psi": 0.0,
+          "reference_mean": 361.9193182584665,
+          "current_mean": 356.2855588205829,
+          "status": "ok"
+        }
+      },
+      "reasons": [
+        "score PSI 0.57",
+        "feature drift: subscription_age_days, prior_approved_renewals, prior_subscription_declines +3 more"
+      ]
+    },
+    {
+      "start": "2026-05-21T19:00:53+00:00",
+      "end": "2026-06-20T19:00:53+00:00",
+      "rows": 2224,
+      "mean_score": 0.03170559261023716,
+      "score_psi": 0.5700166530414889,
+      "noise_floor": 0.004745194997191755,
+      "label_coverage": 0.0,
+      "status": "alert",
+      "drift_status": "alert",
+      "calibration_status": "pending",
+      "calibration": null,
+      "features": {
+        "subscription_age_days": {
+          "psi": 2.4703097142546433,
+          "reference_mean": 64.86225360856744,
+          "current_mean": 303.0296762589928,
+          "status": "warn"
+        },
+        "prior_approved_renewals": {
+          "psi": 2.432551962100786,
+          "reference_mean": 1.449868073878628,
+          "current_mean": 9.18615107913669,
+          "status": "warn"
+        },
+        "prior_subscription_declines": {
+          "psi": 0.6061161808387063,
+          "reference_mean": 0.12773552692844947,
+          "current_mean": 0.6308453237410072,
+          "status": "warn"
+        },
+        "account_age_days": {
+          "psi": 0.44460241846548115,
+          "reference_mean": 421.14169798714335,
+          "current_mean": 552.4287310506295,
+          "status": "warn"
+        },
+        "is_initial": {
+          "psi": 0.36218524116390793,
+          "reference_mean": 0.2103057581871799,
+          "current_mean": 0.03327338129496403,
+          "status": "warn"
+        },
+        "days_since_prev_attempt": {
+          "psi": 0.1824418412855244,
+          "reference_mean": 104.18796306487606,
+          "current_mean": 48.192329983633094,
+          "status": "warn"
+        },
+        "is_one_off": {
+          "psi": 0.06363140235293582,
+          "reference_mean": 0.08156138444823839,
+          "current_mean": 0.16276978417266186,
+          "status": "ok"
+        },
+        "prior_disputes": {
+          "psi": 0.06259325358590405,
+          "reference_mean": 0.010709296911376688,
+          "current_mean": 0.05890287769784173,
+          "status": "ok"
+        },
+        "is_renewal": {
+          "psi": 0.050290838928918176,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.8039568345323741,
+          "status": "ok"
+        },
+        "ip_missing": {
+          "psi": 0.050290838928918176,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.8039568345323741,
+          "status": "ok"
+        },
+        "plan_is_annual": {
+          "psi": 0.043676763942783664,
+          "reference_mean": 0.04733819649231724,
+          "current_mean": 0.013489208633093525,
+          "status": "ok"
+        },
+        "customer_card_updates_90d": {
+          "psi": 0.016948653775730602,
+          "reference_mean": 0.004501008846810492,
+          "current_mean": 0.0170863309352518,
+          "status": "ok"
+        },
+        "attempts_7d": {
+          "psi": 0.01602244029836119,
+          "reference_mean": 0.08280304206115163,
+          "current_mean": 0.11330935251798561,
+          "status": "ok"
+        },
+        "prior_fraud_disputes": {
+          "psi": 0.01459359975704904,
+          "reference_mean": 0.0031041440322830977,
+          "current_mean": 0.018884892086330936,
+          "status": "ok"
+        },
+        "amount_usd": {
+          "psi": 0.008175609569653453,
+          "reference_mean": 23.292979202229816,
+          "current_mean": 20.659608812949642,
+          "status": "ok"
+        },
+        "declines_30d": {
+          "psi": 0.007212925426613579,
+          "reference_mean": 0.09002017693620984,
+          "current_mean": 0.11555755395683454,
+          "status": "ok"
+        },
+        "attempt": {
+          "psi": 0.003880786841643065,
+          "reference_mean": 1.0407418904237156,
+          "current_mean": 1.0544064748201438,
+          "status": "ok"
+        },
+        "ip_bin_mismatch": {
+          "psi": 0.0024121438015932725,
+          "reference_mean": 0.01699518857674996,
+          "current_mean": 0.011241007194244604,
+          "status": "ok"
+        },
+        "au_updates_90d": {
+          "psi": 0.0019299256333275845,
+          "reference_mean": 0.025453981064721402,
+          "current_mean": 0.03282374100719424,
+          "status": "ok"
+        },
+        "approved_usd_24h": {
+          "psi": 0.0014683333729944533,
+          "reference_mean": 0.3585185472605929,
+          "current_mean": 0.4898426258992806,
+          "status": "ok"
+        },
+        "attempts_24h": {
+          "psi": 0.001060506707148119,
+          "reference_mean": 0.012882197733974856,
+          "current_mean": 0.012589928057553957,
+          "status": "ok"
+        },
+        "is_mastercard": {
+          "psi": 0.0009225685184347941,
+          "reference_mean": 0.37730870712401055,
+          "current_mean": 0.3920863309352518,
+          "status": "ok"
+        },
+        "email_disposable": {
+          "psi": 0.00034261841105372696,
+          "reference_mean": 0.00426819804438926,
+          "current_mean": 0.003147482014388489,
+          "status": "ok"
+        },
+        "billing_bin_mismatch": {
+          "psi": 0.00026667480135714265,
+          "reference_mean": 0.017150395778364115,
+          "current_mean": 0.01933453237410072,
+          "status": "ok"
+        },
+        "charged_after_cancel_request": {
+          "psi": 0.0002584291153905981,
+          "reference_mean": 0.0015520720161415489,
+          "current_mean": 0.0022482014388489208,
+          "status": "ok"
+        },
+        "attempts_1h": {
+          "psi": 0.00010962761971925249,
+          "reference_mean": 0.0009312432096849294,
+          "current_mean": 0.0004496402877697842,
+          "status": "ok"
+        },
+        "declines_24h": {
+          "psi": 0.00010648424842940314,
+          "reference_mean": 0.006130684463759119,
+          "current_mean": 0.0035971223021582736,
+          "status": "ok"
+        },
+        "email_freemail": {
+          "psi": 2.1626926052000775e-05,
+          "reference_mean": 0.8478969424181282,
+          "current_mean": 0.8462230215827338,
+          "status": "ok"
+        },
+        "days_since_card_update": {
+          "psi": 0.0,
+          "reference_mean": 352.88522019626,
+          "current_mean": 337.47878468030575,
+          "status": "ok"
+        },
+        "days_since_last_dispute": {
+          "psi": 0.0,
+          "reference_mean": 361.9193182584665,
+          "current_mean": 355.57338263039566,
+          "status": "ok"
+        }
+      },
+      "reasons": [
+        "score PSI 0.57",
+        "feature drift: subscription_age_days, prior_approved_renewals, prior_subscription_declines +3 more"
+      ]
+    },
+    {
+      "start": "2026-06-20T19:00:53+00:00",
+      "end": "2026-07-20T19:00:53+00:00",
+      "rows": 310,
+      "mean_score": 0.030157101060901113,
+      "score_psi": 0.6221907903032609,
+      "noise_floor": 0.029730690471779828,
+      "label_coverage": 0.0,
+      "status": "alert",
+      "drift_status": "alert",
+      "calibration_status": "pending",
+      "calibration": null,
+      "features": {
+        "prior_approved_renewals": {
+          "psi": 2.436099657284743,
+          "reference_mean": 1.449868073878628,
+          "current_mean": 9.293548387096774,
+          "status": "warn"
+        },
+        "subscription_age_days": {
+          "psi": 2.4229899927847054,
+          "reference_mean": 64.86225360856744,
+          "current_mean": 302.61290322580646,
+          "status": "warn"
+        },
+        "account_age_days": {
+          "psi": 0.7163009871106714,
+          "reference_mean": 421.14169798714335,
+          "current_mean": 611.6733951612904,
+          "status": "warn"
+        },
+        "prior_subscription_declines": {
+          "psi": 0.5562667867969573,
+          "reference_mean": 0.12773552692844947,
+          "current_mean": 0.6064516129032258,
+          "status": "warn"
+        },
+        "is_initial": {
+          "psi": 0.4588930692412077,
+          "reference_mean": 0.2103057581871799,
+          "current_mean": 0.02258064516129032,
+          "status": "warn"
+        },
+        "days_since_prev_attempt": {
+          "psi": 0.123393283988602,
+          "reference_mean": 104.18796306487606,
+          "current_mean": 46.064604393548386,
+          "status": "warn"
+        },
+        "plan_is_annual": {
+          "psi": 0.12048853003069232,
+          "reference_mean": 0.04733819649231724,
+          "current_mean": 0.0032258064516129032,
+          "status": "warn"
+        },
+        "is_one_off": {
+          "psi": 0.10050484214313958,
+          "reference_mean": 0.08156138444823839,
+          "current_mean": 0.1870967741935484,
+          "status": "warn"
+        },
+        "prior_disputes": {
+          "psi": 0.08843214624928941,
+          "reference_mean": 0.010709296911376688,
+          "current_mean": 0.07741935483870968,
+          "status": "ok"
+        },
+        "prior_fraud_disputes": {
+          "psi": 0.04321600660707158,
+          "reference_mean": 0.0031041440322830977,
+          "current_mean": 0.035483870967741936,
+          "status": "ok"
+        },
+        "is_renewal": {
+          "psi": 0.036204069387426416,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.7903225806451613,
+          "status": "ok"
+        },
+        "ip_missing": {
+          "psi": 0.036204069387426416,
+          "reference_mean": 0.7081328573645818,
+          "current_mean": 0.7903225806451613,
+          "status": "ok"
+        },
+        "au_updates_90d": {
+          "psi": 0.023453136648951774,
+          "reference_mean": 0.025453981064721402,
+          "current_mean": 0.054838709677419356,
+          "status": "ok"
+        },
+        "amount_usd": {
+          "psi": 0.01656199750852695,
+          "reference_mean": 23.292979202229816,
+          "current_mean": 19.43967741935484,
+          "status": "ok"
+        },
+        "email_disposable": {
+          "psi": 0.01566435157851214,
+          "reference_mean": 0.00426819804438926,
+          "current_mean": 0.0,
+          "status": "ok"
+        },
+        "customer_card_updates_90d": {
+          "psi": 0.014977692837196277,
+          "reference_mean": 0.004501008846810492,
+          "current_mean": 0.016129032258064516,
+          "status": "ok"
+        },
+        "declines_24h": {
+          "psi": 0.011017886652459053,
+          "reference_mean": 0.006130684463759119,
+          "current_mean": 0.0,
+          "status": "ok"
+        },
+        "declines_30d": {
+          "psi": 0.006092520465255195,
+          "reference_mean": 0.09002017693620984,
+          "current_mean": 0.1,
+          "status": "ok"
+        },
+        "charged_after_cancel_request": {
+          "psi": 0.003984119816386455,
+          "reference_mean": 0.0015520720161415489,
+          "current_mean": 0.0,
+          "status": "ok"
+        },
+        "is_mastercard": {
+          "psi": 0.0035647920589374476,
+          "reference_mean": 0.37730870712401055,
+          "current_mean": 0.4064516129032258,
+          "status": "ok"
+        },
+        "attempt": {
+          "psi": 0.0012530167871726157,
+          "reference_mean": 1.0407418904237156,
+          "current_mean": 1.032258064516129,
+          "status": "ok"
+        },
+        "attempts_1h": {
+          "psi": 0.001163591603925021,
+          "reference_mean": 0.0009312432096849294,
+          "current_mean": 0.0,
+          "status": "ok"
+        },
+        "email_freemail": {
+          "psi": 0.0006388384710402856,
+          "reference_mean": 0.8478969424181282,
+          "current_mean": 0.8387096774193549,
+          "status": "ok"
+        },
+        "attempts_24h": {
+          "psi": 0.0003652023662634628,
+          "reference_mean": 0.012882197733974856,
+          "current_mean": 0.0064516129032258064,
+          "status": "ok"
+        },
+        "ip_bin_mismatch": {
+          "psi": 0.0003124542604093927,
+          "reference_mean": 0.01699518857674996,
+          "current_mean": 0.01935483870967742,
+          "status": "ok"
+        },
+        "approved_usd_24h": {
+          "psi": 8.303167638674121e-05,
+          "reference_mean": 0.3585185472605929,
+          "current_mean": 0.16683870967741934,
+          "status": "ok"
+        },
+        "billing_bin_mismatch": {
+          "psi": 6.377292016881945e-05,
+          "reference_mean": 0.017150395778364115,
+          "current_mean": 0.016129032258064516,
+          "status": "ok"
+        },
+        "attempts_7d": {
+          "psi": 1.2566300176334796e-08,
+          "reference_mean": 0.08280304206115163,
+          "current_mean": 0.06774193548387097,
+          "status": "ok"
+        },
+        "days_since_card_update": {
+          "psi": 0.0,
+          "reference_mean": 352.88522019626,
+          "current_mean": 332.88320006451613,
+          "status": "ok"
+        },
+        "days_since_last_dispute": {
+          "psi": 0.0,
+          "reference_mean": 361.9193182584665,
+          "current_mean": 357.23468935483874,
+          "status": "ok"
+        }
+      },
+      "reasons": [
+        "score PSI 0.62",
+        "feature drift: prior_approved_renewals, subscription_age_days, account_age_days +5 more"
+      ]
+    }
+  ]
+}
